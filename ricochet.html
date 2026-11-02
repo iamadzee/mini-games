@@ -1,0 +1,1225 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#10131c">
+    <meta name="description" content="A two-player or AI ricochet duel inside a shifting chamber maze.">
+    <link rel="manifest" href="./manifest.json">
+    <title>Ricochet: Chamber Maze</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --ink: #edf2f7;
+            --muted: #9aa8b8;
+            --line: #2a3442;
+            --surface: #171d27;
+            --surface-raised: #202936;
+            --field: #0c1119;
+            --cyan: #66e4d1;
+            --coral: #ff8068;
+            --gold: #f5c46a;
+            --font-display: "Avenir Next", Avenir, "Trebuchet MS", sans-serif;
+            background: #10131c;
+            color: var(--ink);
+            font-family: var(--font-display);
+        }
+        :root[data-theme="light"] {
+            color-scheme: light;
+            --ink: #152431;
+            --muted: #5b6b78;
+            --line: #cbd4da;
+            --surface: #f4f6f7;
+            --surface-raised: #e7ecee;
+            --field: #dce3e6;
+            --cyan: #087c78;
+            --coral: #c74636;
+            --gold: #9b6700;
+            background: #e8edef;
+        }
+        * { box-sizing: border-box; }
+        [hidden] { display: none !important; }
+        body {
+            min-height: 100vh;
+            margin: 0;
+            background: radial-gradient(ellipse at 42% 0%, #243140 0, #10131c 54%);
+            color: var(--ink);
+        }
+        :root[data-theme="light"] body { background: radial-gradient(ellipse at 42% 0%, #d9e3e3 0, #e8edef 56%); }
+        button, select { font: inherit; }
+        button {
+            min-height: 38px;
+            padding: 8px 12px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            background: var(--surface-raised);
+            color: var(--ink);
+            cursor: pointer;
+            font-weight: 700;
+        }
+        button:hover:not(:disabled) { border-color: var(--cyan); }
+        button:focus-visible, select:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+        button:disabled { opacity: .48; cursor: not-allowed; }
+        button.primary { color: #10131c; background: var(--cyan); border-color: var(--cyan); }
+        button.primary:hover:not(:disabled) { filter: brightness(1.08); }
+        button.icon-button { width: 40px; padding: 7px; }
+        header {
+            min-height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 10px max(18px, calc((100vw - 1440px) / 2));
+            border-bottom: 1px solid var(--line);
+            background: color-mix(in srgb, var(--surface) 88%, transparent);
+        }
+        .brand { display: flex; align-items: center; gap: 15px; min-width: 0; }
+        .back-link { color: var(--muted); text-decoration: none; font-size: .75rem; white-space: nowrap; }
+        .back-link:hover { color: var(--ink); }
+        .back-link { color: var(--muted); text-decoration: none; font-size: .82rem; white-space: nowrap; }
+        .back-link:hover { color: var(--ink); }
+        .brand-mark { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--cyan); color: var(--cyan); transform: rotate(45deg); }
+        .brand-mark span { transform: rotate(-45deg); font-weight: 900; }
+        h1 { margin: 0; font-size: 1rem; line-height: 1.2; }
+        .subtitle { display: block; margin-top: 3px; color: var(--muted); font-size: .68rem; font-weight: 600; }
+        .header-right { display: flex; align-items: center; gap: 10px; }
+        .match-chip { color: var(--gold); font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+        main { width: min(100%, 1440px); margin: 0 auto; padding: 20px; }
+        .game-layout { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; align-items: start; }
+        .arena-panel { min-width: 0; }
+        .scorebar { min-height: 66px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding: 10px 16px; border: 1px solid var(--line); border-bottom: 0; background: var(--surface); }
+        .score-player { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .score-player.right { justify-content: flex-end; text-align: right; }
+        .player-dot { width: 11px; height: 11px; flex: 0 0 11px; border-radius: 2px; background: var(--cyan); box-shadow: 0 0 14px color-mix(in srgb, var(--cyan) 55%, transparent); }
+        .score-player.right .player-dot { background: var(--coral); box-shadow: 0 0 14px color-mix(in srgb, var(--coral) 55%, transparent); }
+        .player-label { color: var(--muted); font-size: .64rem; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+        .score-number { display: block; margin-top: 1px; font-size: 1.28rem; font-variant-numeric: tabular-nums; font-weight: 850; line-height: 1; }
+        .score-ammo { margin-left: auto; color: var(--muted); font-size: .75rem; font-variant-numeric: tabular-nums; }
+        .score-player.right .score-ammo { margin: 0 0 0 8px; }
+        .versus { color: var(--muted); font-size: .62rem; font-weight: 800; letter-spacing: .15em; }
+        .canvas-wrap { position: relative; overflow: hidden; border: 1px solid var(--line); background: #0b1017; line-height: 0; }
+        #arena { display: block; width: 100%; aspect-ratio: 8 / 5; touch-action: none; }
+        .arena-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 3;
+            display: grid;
+            place-items: center;
+            padding: 18px;
+            background: rgba(6, 9, 14, .72);
+            backdrop-filter: blur(5px);
+            line-height: 1.4;
+        }
+        .arena-overlay[hidden] { display: none; }
+        .overlay-panel { width: min(100%, 440px); padding: 28px; border: 1px solid #394553; background: rgba(19, 26, 36, .96); box-shadow: 0 24px 70px rgba(0,0,0,.38); text-align: left; }
+        .overlay-kicker { color: var(--cyan); font-size: .66rem; font-weight: 850; letter-spacing: .17em; text-transform: uppercase; }
+        .overlay-panel h2 { margin: 10px 0 8px; font-size: clamp(1.45rem, 3vw, 2.1rem); line-height: 1.05; }
+        .overlay-panel p { margin: 0; color: #aab6c1; font-size: .88rem; line-height: 1.55; }
+        .overlay-actions { display: flex; align-items: center; gap: 8px; margin-top: 20px; }
+        .overlay-actions button { min-width: 130px; }
+        .arena-footer { min-height: 42px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 12px; border: 1px solid var(--line); border-top: 0; background: var(--surface); }
+        .event-line { min-width: 0; color: var(--muted); font-size: .73rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .event-line strong { color: var(--ink); }
+        .round-label { color: var(--gold); font-size: .68rem; font-weight: 800; letter-spacing: .08em; white-space: nowrap; text-transform: uppercase; }
+        .side-panel { display: grid; gap: 12px; }
+        .panel-section { padding: 15px; border: 1px solid var(--line); background: var(--surface); }
+        .section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+        .section-head h2 { margin: 0; font-size: .74rem; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
+        .section-index { color: var(--muted); font: 700 .65rem ui-monospace, monospace; }
+        .mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+        .mode-switch button { min-height: 35px; padding: 6px; font-size: .72rem; }
+        .mode-switch button[aria-pressed="true"] { color: #10131c; background: var(--cyan); border-color: var(--cyan); }
+        .field { display: grid; gap: 6px; margin-top: 12px; }
+        .field label { color: var(--muted); font-size: .7rem; font-weight: 700; }
+        .muted-note { margin: 9px 0 0; color: var(--muted); font-size: .65rem; line-height: 1.45; }
+        select { width: 100%; min-height: 36px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 5px; background: var(--field); color: var(--ink); }
+        .control-list { display: grid; gap: 8px; }
+        .control-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font-size: .72rem; }
+        .key-group { display: flex; gap: 3px; }
+        kbd { min-width: 23px; padding: 3px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--field); color: var(--ink); font: 700 .65rem ui-monospace, monospace; text-align: center; }
+        .status-list { display: grid; gap: 9px; }
+        .status-row { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: .72rem; }
+        .status-row strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+        .uncapped-label { color: var(--coral); font-size: .56rem; font-weight: 850; letter-spacing: .08em; }
+        .legend { display: grid; gap: 8px; }
+        .legend-row { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .7rem; }
+        .legend-swatch { width: 10px; height: 10px; flex: 0 0 10px; border-radius: 50%; background: #f7fbff; }
+        .legend-swatch.orange { background: #ff9a45; }
+        .legend-swatch.pink { background: #fa52dc; box-shadow: 0 0 9px #fa52dc; }
+        .legend-swatch.crate { width: 11px; height: 11px; border-radius: 2px; background: var(--gold); }
+        .bottom-actions { display: flex; gap: 7px; }
+        .bottom-actions button { flex: 1; font-size: .72rem; }
+        .mobile-controls { display: none; }
+        @media (max-width: 980px) {
+            main { padding: 14px; }
+            .game-layout { grid-template-columns: minmax(0, 1fr) 230px; gap: 12px; }
+            .panel-section { padding: 12px; }
+        }
+        @media (max-width: 760px) {
+            header { padding-inline: 14px; }
+            main { padding: 10px; }
+            .game-layout { grid-template-columns: 1fr; }
+            .side-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .mobile-controls { display: block; }
+            .canvas-wrap { max-height: 64vh; }
+            #arena { max-height: 64vh; object-fit: contain; }
+        }
+        @media (max-width: 520px) {
+            header { min-height: 56px; gap: 8px; }
+            .back-link { font-size: .72rem; }
+            .brand { gap: 9px; }
+            .brand-mark { width: 25px; height: 25px; }
+            h1 { font-size: .88rem; }
+            .subtitle { font-size: .6rem; }
+            .match-chip { display: none; }
+            .scorebar { min-height: 56px; padding: 8px; }
+            .player-label { font-size: .56rem; }
+            .score-number { font-size: 1.08rem; }
+            .score-ammo { font-size: .65rem; }
+            .versus { font-size: .55rem; }
+            .arena-footer { min-height: 36px; }
+            .event-line { font-size: .65rem; }
+            .round-label { font-size: .58rem; }
+            .side-panel { gap: 8px; }
+            .panel-section { padding: 10px; }
+            .section-head { margin-bottom: 9px; }
+            .control-row { align-items: flex-start; font-size: .64rem; }
+            .overlay-panel { padding: 21px; }
+        }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+    </style>
+</head>
+<body>
+    <header>
+    <div class="brand">
+            <a class="back-link" href="index.html">&#8592; Menu</a>
+            <span class="brand-mark" aria-hidden="true"><span>R</span></span>
+            <h1>RICOCHET<span class="subtitle">CHAMBER MAZE</span></h1>
+        </div>
+        <div class="header-right">
+            <span class="match-chip">First to three</span>
+            <button class="icon-button" id="pauseBtn" type="button" title="Pause" aria-label="Pause game" disabled>&#10074;&#10074;</button>
+        </div>
+    </header>
+    <main>
+        <div class="game-layout">
+            <section class="arena-panel" aria-label="Ricochet game arena">
+                <div class="scorebar">
+                    <div class="score-player">
+                        <span class="player-dot" aria-hidden="true"></span>
+                        <div><span class="player-label">Player One</span><strong class="score-number" id="scoreOne">0</strong></div>
+                        <span class="score-ammo" id="ammoOne">AMMO 6</span>
+                    </div>
+                    <span class="versus">VS</span>
+                    <div class="score-player right">
+                        <span class="score-ammo" id="ammoTwo">AMMO 6</span>
+                        <div><span class="player-label" id="playerTwoName">Player Two</span><strong class="score-number" id="scoreTwo">0</strong></div>
+                        <span class="player-dot" aria-hidden="true"></span>
+                    </div>
+                </div>
+                <div class="canvas-wrap">
+                    <canvas id="arena" width="960" height="600" tabindex="0" role="img" aria-label="Top-down ricochet duel arena with a loop maze, players, ammo, and bouncing bullets"></canvas>
+                    <div class="arena-overlay" id="gameOverlay">
+                        <div class="overlay-panel">
+                            <span class="overlay-kicker" id="overlayKicker">One arena. No safe shots.</span>
+                            <h2 id="overlayTitle">The maze remembers.</h2>
+                            <p id="overlayText">Every wall-hit bullet stays in play. Miss carefully, move constantly, and never trust a quiet corridor.</p>
+                            <div class="overlay-actions"><button class="primary" id="overlayAction" type="button">Enter the maze</button></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="arena-footer">
+                    <div class="event-line" id="eventLine" aria-live="polite"><strong>Ready.</strong> Choose a mode and enter the maze.</div>
+                    <span class="round-label" id="roundLabel">ROUND 1</span>
+                </div>
+            </section>
+            <aside class="side-panel" aria-label="Game setup and status">
+                <section class="panel-section">
+                    <div class="section-head"><h2>Match setup</h2><span class="section-index">01</span></div>
+                    <div class="mode-switch" role="group" aria-label="Game mode">
+                        <button id="twoPlayerMode" type="button" aria-pressed="true">Two player</button>
+                        <button id="aiMode" type="button" aria-pressed="false">Vs AI</button>
+                    </div>
+                    <div class="field" id="difficultyField" hidden>
+                        <label for="difficulty">Opponent</label>
+                        <select id="difficulty">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="soundToggle">Arena audio</label>
+                        <button id="soundToggle" type="button" aria-pressed="true">Audio on</button>
+                    </div>
+                </section>
+                <section class="panel-section">
+                    <div class="section-head"><h2>Controls</h2><span class="section-index">02</span></div>
+                    <div class="control-list" id="p1Controls">
+                        <div class="control-row"><span>Move / aim</span><span class="key-group"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></div>
+                        <div class="control-row"><span>Fire</span><span class="key-group"><kbd>Space</kbd></span></div>
+                        <div class="control-row"><span>Dash</span><span class="key-group"><kbd>Shift</kbd></span></div>
+                        <div class="control-row"><span>Seal gate nearby</span><span class="key-group"><kbd>E</kbd></span></div>
+                    </div>
+                    <div class="control-list" id="p2Controls">
+                        <div class="control-row"><span>Move / aim</span><span class="key-group"><kbd>&#8593;</kbd><kbd>&#8592;</kbd><kbd>&#8595;</kbd><kbd>&#8594;</kbd></span></div>
+                        <div class="control-row"><span>Fire</span><span class="key-group"><kbd>Enter</kbd></span></div>
+                        <div class="control-row"><span>Dash</span><span class="key-group"><kbd>RShift</kbd></span></div>
+                        <div class="control-row"><span>Seal gate nearby</span><span class="key-group"><kbd>RCtrl</kbd></span></div>
+                    </div>
+                    <p class="muted-note" id="aiControlNote" hidden>WASD, Space, Shift, and E control Player One.</p>
+                </section>
+                <section class="panel-section">
+                    <div class="section-head"><h2>Arena pressure</h2><span class="section-index">03</span></div>
+                    <div class="status-list">
+                        <div class="status-row"><span>Live bullets</span><strong id="bulletCount">0</strong><span class="uncapped-label">NO CAP</span></div>
+                        <div class="status-row"><span>Ammo drop</span><strong id="dropStatus">--</strong></div>
+                        <div class="status-row"><span>Gate seal</span><strong id="gateStatus">READY</strong></div>
+                    </div>
+                </section>
+                <section class="panel-section">
+                    <div class="section-head"><h2>Threat age</h2><span class="section-index">04</span></div>
+                    <div class="legend">
+                        <div class="legend-row"><i class="legend-swatch"></i><span>Fresh ricochet</span></div>
+                        <div class="legend-row"><i class="legend-swatch orange"></i><span>Accelerating</span></div>
+                        <div class="legend-row"><i class="legend-swatch pink"></i><span>Old and lethal</span></div>
+                        <div class="legend-row"><i class="legend-swatch crate"></i><span>Ammo bait</span></div>
+                    </div>
+                </section>
+                <div class="bottom-actions">
+                    <button id="restartBtn" type="button">Restart match</button>
+                    <button id="muteBtn" type="button" title="Toggle audio">&#9835;</button>
+                </div>
+            </aside>
+        </div>
+    </main>
+    <script>
+        (() => {
+            const canvas = document.getElementById('arena');
+            const ctx = canvas.getContext('2d');
+            const world = { width: 960, height: 600, margin: 26 };
+            const matchTarget = 3;
+            const keys = new Set();
+            const modeButtons = [document.getElementById('twoPlayerMode'), document.getElementById('aiMode')];
+            const modeState = { value: 'two' };
+            const palette = { cyan: '#66e4d1', coral: '#ff8068', gold: '#f5c46a', wall: '#3a4653', floor: '#101720' };
+            const staticBlocks = [
+                { cx: 405, cy: 190, w: 90, h: 16, angle: 0 }, { cx: 555, cy: 190, w: 90, h: 16, angle: 0 },
+                { cx: 405, cy: 410, w: 90, h: 16, angle: 0 }, { cx: 555, cy: 410, w: 90, h: 16, angle: 0 },
+                { cx: 360, cy: 232, w: 16, h: 64, angle: 0 }, { cx: 360, cy: 368, w: 16, h: 64, angle: 0 },
+                { cx: 600, cy: 232, w: 16, h: 64, angle: 0 }, { cx: 600, cy: 368, w: 16, h: 64, angle: 0 },
+                { cx: 176, cy: 115, w: 72, h: 54, angle: 0 }, { cx: 784, cy: 115, w: 72, h: 54, angle: 0 },
+                { cx: 176, cy: 485, w: 72, h: 54, angle: 0 }, { cx: 784, cy: 485, w: 72, h: 54, angle: 0 },
+                { cx: 292, cy: 300, w: 25, h: 52, angle: Math.PI / 4, deflector: true },
+                { cx: 668, cy: 300, w: 25, h: 52, angle: Math.PI / 4, deflector: true },
+                { cx: 480, cy: 112, w: 25, h: 52, angle: Math.PI / 4, deflector: true },
+                { cx: 480, cy: 488, w: 25, h: 52, angle: Math.PI / 4, deflector: true },
+                { cx: 292, cy: 175, w: 25, h: 52, angle: Math.PI / 4, deflector: true },
+                { cx: 668, cy: 425, w: 25, h: 52, angle: Math.PI / 4, deflector: true }
+            ];
+            const spawnPads = [
+                { x: 480, y: 300 }, { x: 270, y: 300 }, { x: 690, y: 300 }, { x: 480, y: 145 }, { x: 480, y: 455 },
+                { x: 260, y: 210 }, { x: 700, y: 390 }, { x: 110, y: 300 }, { x: 850, y: 300 }, { x: 300, y: 500 }, { x: 660, y: 100 }
+            ];
+            const gateBlocks = [
+                { cx: 480, cy: 190, w: 68, h: 9, angle: 0 }, { cx: 480, cy: 410, w: 68, h: 9, angle: 0 },
+                { cx: 360, cy: 300, w: 9, h: 68, angle: 0 }, { cx: 600, cy: 300, w: 9, h: 68, angle: 0 }
+            ];
+            let players = [];
+            let bullets = [];
+            let ammoCrate = null;
+            let scores = [0, 0];
+            let roundNumber = 1;
+            let phase = 'menu';
+            let pausedFrom = 'round';
+            let roundElapsed = 0;
+            let ammoTimer = 4;
+            let gateTimer = 0;
+            let gateCooldown = 0;
+            let worldScale = 1;
+            let pixelRatio = 1;
+            let lastFrame = 0;
+            let previousSoundTime = 0;
+            let audioContext = null;
+            let audioEnabled = true;
+            let overlayAction = () => startMatch();
+            let eventTimeout = 0;
+
+            const overlay = document.getElementById('gameOverlay');
+            const overlayTitle = document.getElementById('overlayTitle');
+            const overlayText = document.getElementById('overlayText');
+            const overlayKicker = document.getElementById('overlayKicker');
+            const overlayButton = document.getElementById('overlayAction');
+
+            function rotatePoint(x, y, angle) {
+                const c = Math.cos(angle);
+                const s = Math.sin(angle);
+                return { x: x * c - y * s, y: x * s + y * c };
+            }
+
+            function activeBlocks() {
+                return gateTimer > 0 ? staticBlocks.concat(gateBlocks) : staticBlocks;
+            }
+
+            function circleBlockContact(x, y, radius, block) {
+                const relative = rotatePoint(x - block.cx, y - block.cy, -block.angle);
+                const halfW = block.w / 2;
+                const halfH = block.h / 2;
+                const nearestX = Math.max(-halfW, Math.min(halfW, relative.x));
+                const nearestY = Math.max(-halfH, Math.min(halfH, relative.y));
+                let dx = relative.x - nearestX;
+                let dy = relative.y - nearestY;
+                let distance = Math.hypot(dx, dy);
+                if (distance > radius) return null;
+                if (distance < .001) {
+                    const penX = halfW - Math.abs(relative.x);
+                    const penY = halfH - Math.abs(relative.y);
+                    if (penX < penY) { dx = relative.x < 0 ? -1 : 1; dy = 0; distance = -penX; }
+                    else { dx = 0; dy = relative.y < 0 ? -1 : 1; distance = -penY; }
+                } else {
+                    dx /= distance;
+                    dy /= distance;
+                }
+                const normal = rotatePoint(dx, dy, block.angle);
+                return { nx: normal.x, ny: normal.y, overlap: radius - distance };
+            }
+
+            function blocked(x, y, radius, includeGate = true) {
+                if (x < world.margin + radius || x > world.width - world.margin - radius || y < world.margin + radius || y > world.height - world.margin - radius) return true;
+                const blocks = includeGate ? activeBlocks() : staticBlocks;
+                return blocks.some((block) => circleBlockContact(x, y, radius, block));
+            }
+
+            function makePlayer(id, x, y) {
+                return {
+                    id, x, y, vx: 0, vy: 0, dx: id === 0 ? 1 : -1, dy: 0,
+                    radius: 13, ammo: 6, cooldown: 0, dashCooldown: 0, dashTime: 0,
+                    invulnerable: 0, color: id === 0 ? palette.cyan : palette.coral,
+                    ai: id === 1 && modeState.value === 'ai', aiThink: .2, aiFire: 1, aiGate: 2.5,
+                    aiMoveX: 0, aiMoveY: 0, aiStuckTime: 0, aiProgressCheck: 0,
+                    aiLastX: x, aiLastY: y, aiEscapeTime: 0, flash: 0, dryClick: 0
+                };
+            }
+
+            function setEvent(message, strong = '') {
+                const line = document.getElementById('eventLine');
+                line.replaceChildren();
+                if (strong) {
+                    const emphasis = document.createElement('strong');
+                    emphasis.textContent = strong;
+                    line.append(emphasis, document.createTextNode(` ${message}`));
+                } else line.textContent = message;
+                window.clearTimeout(eventTimeout);
+            }
+
+            function showOverlay(kicker, title, text, actionLabel, action) {
+                overlayKicker.textContent = kicker;
+                overlayTitle.textContent = title;
+                overlayText.textContent = text;
+                overlayButton.textContent = actionLabel;
+                overlayAction = action;
+                overlay.hidden = false;
+            }
+
+            function resizeCanvas() {
+                const bounds = canvas.getBoundingClientRect();
+                if (!bounds.width) return;
+                pixelRatio = Math.min(2, window.devicePixelRatio || 1);
+                canvas.width = Math.round(bounds.width * pixelRatio);
+                canvas.height = Math.round(bounds.width * (world.height / world.width) * pixelRatio);
+                worldScale = canvas.width / world.width / pixelRatio;
+                draw();
+            }
+
+            function startMatch() {
+                ensureAudio();
+                scores = [0, 0];
+                roundNumber = 1;
+                beginRound();
+                playStartCue();
+            }
+
+            function beginRound() {
+                players = [makePlayer(0, 104, 300), makePlayer(1, 856, 300)];
+                bullets = [];
+                ammoCrate = null;
+                ammoTimer = 4.5;
+                gateTimer = 0;
+                gateCooldown = 0;
+                roundElapsed = 0;
+                phase = 'round';
+                overlay.hidden = true;
+                canvas.focus({ preventScroll: true });
+                document.getElementById('pauseBtn').disabled = false;
+                document.getElementById('pauseBtn').setAttribute('aria-label', 'Pause game');
+                document.getElementById('roundLabel').textContent = `ROUND ${roundNumber}`;
+                document.getElementById('playerTwoName').textContent = modeState.value === 'ai' ? 'Rival AI' : 'Player Two';
+                updateHud();
+                setEvent('Eight rounds of fire. No shot expires.', 'Round live.');
+                draw();
+            }
+
+            function endRound(winnerId) {
+                if (phase !== 'round') return;
+                phase = 'result';
+                scores[winnerId] += 1;
+                updateHud();
+                noiseBurst(.22, .08, 620);
+                sweepTone(170, 45, .34, 'sawtooth', .085);
+                tone(winnerId === 0 ? 660 : 440, .22, 'sine', .055);
+                const label = winnerId === 0 ? 'Player One' : (modeState.value === 'ai' ? 'Rival AI' : 'Player Two');
+                const matchOver = scores[winnerId] >= matchTarget;
+                if (matchOver) {
+                    showOverlay('Match complete', `${label} owns the maze.`, `Final score ${scores[0]} : ${scores[1]}. Run it back when you are ready.`, 'Rematch', startMatch);
+                    setEvent('Match decided.', label);
+                } else {
+                    showOverlay(`Round ${roundNumber} decided`, `${label} survives.`, `Score ${scores[0]} : ${scores[1]}. Every round starts clean; the maze is waiting.`, 'Next round', () => {
+                        roundNumber += 1;
+                        beginRound();
+                    });
+                    setEvent('The chamber resets. The score does not.', `${label} takes the round.`);
+                }
+                document.getElementById('pauseBtn').disabled = true;
+                draw();
+            }
+
+            function togglePause() {
+                if (phase === 'round') {
+                    pausedFrom = phase;
+                    phase = 'paused';
+                    showOverlay('Match paused', 'The bullets are still there.', 'Take a breath. The match resumes exactly where you left it.', 'Resume', () => {
+                        phase = pausedFrom;
+                        overlay.hidden = true;
+                        canvas.focus({ preventScroll: true });
+                        lastFrame = performance.now();
+                    });
+                    document.getElementById('pauseBtn').setAttribute('aria-label', 'Resume game');
+                } else if (phase === 'paused') {
+                    phase = pausedFrom;
+                    overlay.hidden = true;
+                    canvas.focus({ preventScroll: true });
+                    lastFrame = performance.now();
+                    document.getElementById('pauseBtn').setAttribute('aria-label', 'Pause game');
+                }
+            }
+
+            function ensureAudio() {
+                if (!audioEnabled) return;
+                const AudioCtor = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtor) {
+                    setEvent('This browser does not support synthesized audio.', 'Audio unavailable.');
+                    return;
+                }
+                try {
+                    if (!audioContext || audioContext.state === 'closed') audioContext = new AudioCtor();
+                    if (audioContext.state !== 'running') {
+                        audioContext.resume().catch(() => setEvent('Use the audio control to allow sound playback.', 'Audio is paused.'));
+                    }
+                } catch (error) {
+                    setEvent('Use the audio control to allow sound playback.', 'Audio is paused.');
+                }
+            }
+
+            function tone(frequency, duration = .055, type = 'triangle', volume = .035) {
+                if (!audioEnabled) return;
+                ensureAudio();
+                if (!audioContext) return;
+                const now = audioContext.currentTime;
+                const oscillator = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                oscillator.type = type;
+                oscillator.frequency.setValueAtTime(frequency, now);
+                oscillator.frequency.exponentialRampToValueAtTime(Math.max(80, frequency * .72), now + duration);
+                gain.gain.setValueAtTime(Math.min(.14, Math.max(.045, volume * 3)), now);
+                gain.gain.exponentialRampToValueAtTime(.001, now + duration);
+                oscillator.connect(gain).connect(audioContext.destination);
+                oscillator.start(now);
+                oscillator.stop(now + duration);
+            }
+
+            function sweepTone(startFrequency, endFrequency, duration, type = 'sawtooth', volume = .055) {
+                if (!audioEnabled) return;
+                ensureAudio();
+                if (!audioContext || audioContext.state === 'closed') return;
+                const now = audioContext.currentTime;
+                const oscillator = audioContext.createOscillator();
+                const filter = audioContext.createBiquadFilter();
+                const gain = audioContext.createGain();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(Math.min(5000, Math.max(startFrequency, endFrequency) * 2), now);
+                oscillator.type = type;
+                oscillator.frequency.setValueAtTime(Math.max(30, startFrequency), now);
+                oscillator.frequency.exponentialRampToValueAtTime(Math.max(30, endFrequency), now + duration);
+                gain.gain.setValueAtTime(Math.min(.14, volume), now);
+                gain.gain.exponentialRampToValueAtTime(.001, now + duration);
+                oscillator.connect(filter).connect(gain).connect(audioContext.destination);
+                oscillator.start(now);
+                oscillator.stop(now + duration);
+            }
+
+            function noiseBurst(duration = .14, volume = .06, cutoff = 1800) {
+                if (!audioEnabled) return;
+                ensureAudio();
+                if (!audioContext || audioContext.state === 'closed') return;
+                const now = audioContext.currentTime;
+                const frameCount = Math.ceil(audioContext.sampleRate * duration);
+                const buffer = audioContext.createBuffer(1, frameCount, audioContext.sampleRate);
+                const samples = buffer.getChannelData(0);
+                for (let index = 0; index < frameCount; index++) {
+                    samples[index] = (Math.random() * 2 - 1) * (1 - index / frameCount);
+                }
+                const source = audioContext.createBufferSource();
+                const filter = audioContext.createBiquadFilter();
+                const gain = audioContext.createGain();
+                source.buffer = buffer;
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(cutoff, now);
+                gain.gain.setValueAtTime(Math.min(.14, volume), now);
+                gain.gain.exponentialRampToValueAtTime(.001, now + duration);
+                source.connect(filter).connect(gain).connect(audioContext.destination);
+                source.start(now);
+                source.stop(now + duration);
+            }
+
+            function playStartCue() {
+                tone(440, .16, 'sine', .04);
+                window.setTimeout(() => tone(587, .18, 'sine', .04), 110);
+                window.setTimeout(() => tone(784, .24, 'sine', .045), 230);
+            }
+
+            function fire(player) {
+                if (player.cooldown > 0 || phase !== 'round') return;
+                player.cooldown = player.ai ? .72 : .28;
+                if (player.ammo <= 0) {
+                    player.dryClick = .16;
+                    tone(190, .035, 'square', .018);
+                    return;
+                }
+                player.ammo -= 1;
+                const speed = 335;
+                const startOffset = player.radius + 9;
+                const bullet = {
+                    x: player.x + player.dx * startOffset,
+                    y: player.y + player.dy * startOffset,
+                    vx: player.dx * speed,
+                    vy: player.dy * speed,
+                    speed,
+                    age: 0,
+                    ownerGrace: player.ai ? 2 : 0,
+                    bounces: 0,
+                    owner: player.id,
+                    trail: [],
+                    glow: 0
+                };
+                bullets.push(bullet);
+                player.vx -= player.dx * 48;
+                player.vy -= player.dy * 48;
+                player.flash = .12;
+                tone(player.id === 0 ? 280 : 245, .075, 'sawtooth', .027);
+                sweepTone(player.id === 0 ? 580 : 460, 150, .11, 'square', .035);
+                setEvent(`${bullets.length} live rounds in the maze.`, 'Shot fired.');
+                updateHud();
+            }
+
+            function ricochet(bullet, nx, ny, hitX, hitY, audible = true) {
+                const dot = bullet.vx * nx + bullet.vy * ny;
+                if (dot < 0) {
+                    bullet.vx -= 2 * dot * nx;
+                    bullet.vy -= 2 * dot * ny;
+                }
+                bullet.x += nx * .9;
+                bullet.y += ny * .9;
+                bullet.bounces += 1;
+                bullet.speed = Math.min(810, bullet.speed * 1.025);
+                const magnitude = Math.hypot(bullet.vx, bullet.vy) || 1;
+                bullet.vx = bullet.vx / magnitude * bullet.speed;
+                bullet.vy = bullet.vy / magnitude * bullet.speed;
+                bullet.glow = .11;
+                if (audible && performance.now() - previousSoundTime > 48) {
+                    previousSoundTime = performance.now();
+                    tone(390 + Math.min(800, bullet.bounces * 19), .04, 'triangle', .016);
+                    sweepTone(260 + Math.min(500, bullet.bounces * 14), 720 + Math.min(500, bullet.bounces * 18), .055, 'sine', .035);
+                }
+                if (audible && hitX !== undefined) {
+                    bullet.trail.push({ x: hitX, y: hitY, time: .18 });
+                    if (bullet.trail.length > 10) bullet.trail.shift();
+                }
+            }
+
+            function advanceBullet(bullet, dt, audible = false) {
+                const steps = Math.max(1, Math.min(18, Math.ceil(bullet.speed * dt / 4)));
+                const step = dt / steps;
+                for (let index = 0; index < steps; index++) {
+                    bullet.x += bullet.vx * step;
+                    bullet.y += bullet.vy * step;
+                    let didBounce = false;
+                    const edge = world.margin + 5;
+                    if (bullet.x < edge) { bullet.x = edge; ricochet(bullet, 1, 0, bullet.x, bullet.y, audible); didBounce = true; }
+                    else if (bullet.x > world.width - edge) { bullet.x = world.width - edge; ricochet(bullet, -1, 0, bullet.x, bullet.y, audible); didBounce = true; }
+                    if (bullet.y < edge) { bullet.y = edge; ricochet(bullet, 0, 1, bullet.x, bullet.y, audible); didBounce = true; }
+                    else if (bullet.y > world.height - edge) { bullet.y = world.height - edge; ricochet(bullet, 0, -1, bullet.x, bullet.y, audible); didBounce = true; }
+                    if (!didBounce) {
+                        for (const block of activeBlocks()) {
+                            const contact = circleBlockContact(bullet.x, bullet.y, 3.5, block);
+                            if (contact) {
+                                ricochet(bullet, contact.nx, contact.ny, bullet.x, bullet.y, audible);
+                                break;
+                            }
+                        }
+                    }
+                }
+                bullet.glow = Math.max(0, bullet.glow - dt);
+                bullet.trail.forEach((point) => { point.time -= dt; });
+                bullet.trail = bullet.trail.filter((point) => point.time > 0);
+            }
+
+            function recoverPlayer(player) {
+                if (!blocked(player.x, player.y, player.radius)) return;
+                for (let distance = 8; distance <= 96; distance += 8) {
+                    for (let direction = 0; direction < 16; direction++) {
+                        const angle = direction * Math.PI / 8;
+                        const x = player.x + Math.cos(angle) * distance;
+                        const y = player.y + Math.sin(angle) * distance;
+                        if (!blocked(x, y, player.radius)) {
+                            player.x = x;
+                            player.y = y;
+                            player.vx = 0;
+                            player.vy = 0;
+                            return;
+                        }
+                    }
+                }
+            }
+
+            function movePlayer(player, mx, my, dt) {
+                recoverPlayer(player);
+                const length = Math.hypot(mx, my) || 1;
+                mx /= length;
+                my /= length;
+                if (mx || my) {
+                    player.dx = mx;
+                    player.dy = my;
+                }
+                const speed = player.dashTime > 0 ? 610 : 225;
+                const targetVx = mx * speed;
+                const targetVy = my * speed;
+                const accel = player.dashTime > 0 ? 16 : 12;
+                player.vx += (targetVx - player.vx) * Math.min(1, accel * dt);
+                player.vy += (targetVy - player.vy) * Math.min(1, accel * dt);
+                if (!mx) player.vx *= Math.max(0, 1 - dt * 4.5);
+                if (!my) player.vy *= Math.max(0, 1 - dt * 4.5);
+                const nextX = player.x + player.vx * dt;
+                if (!blocked(nextX, player.y, player.radius)) player.x = nextX;
+                else player.vx = 0;
+                const nextY = player.y + player.vy * dt;
+                if (!blocked(player.x, nextY, player.radius)) player.y = nextY;
+                else player.vy = 0;
+                player.x = Math.max(world.margin + player.radius, Math.min(world.width - world.margin - player.radius, player.x));
+                player.y = Math.max(world.margin + player.radius, Math.min(world.height - world.margin - player.radius, player.y));
+            }
+
+            function attemptDash(player) {
+                if (player.dashCooldown > 0 || phase !== 'round') return;
+                const movingX = player.ai ? player.aiMoveX : (Number(keys.has(player.id === 0 ? 'd' : 'arrowright')) - Number(keys.has(player.id === 0 ? 'a' : 'arrowleft')));
+                const movingY = player.ai ? player.aiMoveY : (Number(keys.has(player.id === 0 ? 's' : 'arrowdown')) - Number(keys.has(player.id === 0 ? 'w' : 'arrowup')));
+                if (movingX || movingY) {
+                    const length = Math.hypot(movingX, movingY) || 1;
+                    player.dx = movingX / length;
+                    player.dy = movingY / length;
+                }
+                player.dashTime = .16;
+                player.invulnerable = .16;
+                player.dashCooldown = 2.2;
+                noiseBurst(.16, .075, 2400);
+                sweepTone(960, 150, .2, 'sawtooth', .065);
+                tone(125, .13, 'sine', .045);
+            }
+
+            function activateGate(player) {
+                if (Math.hypot(player.x - 480, player.y - 300) > 168) {
+                    if (!player.ai) setEvent('The pressure plate is in the center chamber.', 'Too far from the switch.');
+                    return false;
+                }
+                if (gateCooldown > 0 || gateTimer > 0) {
+                    if (!player.ai) setEvent(`Gate seal recharging: ${Math.ceil(gateCooldown)}s.`, 'Seal unavailable.');
+                    return false;
+                }
+                gateTimer = 3;
+                gateCooldown = 10;
+                noiseBurst(.34, .09, 420);
+                sweepTone(245, 48, .48, 'triangle', .09);
+                setEvent('Four temporary gates lock the chamber for three seconds.', 'Pressure seal active.');
+                return true;
+            }
+
+            function traceBullet(bullet, seconds) {
+                const copy = { ...bullet, trail: [], glow: 0 };
+                const frames = Math.max(1, Math.ceil(seconds / .075));
+                const points = [];
+                for (let index = 0; index < frames; index++) {
+                    advanceBullet(copy, seconds / frames, false);
+                    points.push({ x: copy.x, y: copy.y });
+                }
+                return points;
+            }
+
+            function spawnAmmo() {
+                let choice = null;
+                let bestRisk = Infinity;
+                if (bullets.length) {
+                    const paths = bullets.map((bullet) => traceBullet(bullet, 2.4));
+                    for (const pad of spawnPads) {
+                        if (blocked(pad.x, pad.y, 20, false)) continue;
+                        let closest = Infinity;
+                        for (const path of paths) {
+                            for (const point of path) closest = Math.min(closest, Math.hypot(pad.x - point.x, pad.y - point.y));
+                        }
+                        if (closest < 56 && closest < bestRisk) { choice = pad; bestRisk = closest; }
+                    }
+                }
+                if (!choice) {
+                    choice = spawnPads.filter((pad) => !blocked(pad.x, pad.y, 20, false)).sort((a, b) => {
+                        const score = (pad) => Math.min(...players.map((player) => Math.hypot(pad.x - player.x, pad.y - player.y)));
+                        return score(b) - score(a);
+                    })[0] || { x: 480, y: 300 };
+                }
+                ammoCrate = { x: choice.x, y: choice.y, time: 11, pulse: 0 };
+                sweepTone(480, 980, .22, 'sine', .045);
+                tone(880, .13, 'sine', .02);
+                window.setTimeout(() => tone(1040, .12, 'sine', .018), 110);
+                setEvent('Both players can hear the drop. The route is the risk.', 'Ammo crate landed.');
+            }
+
+            function distancePointSegment(px, py, ax, ay, bx, by) {
+                const dx = bx - ax;
+                const dy = by - ay;
+                const lengthSq = dx * dx + dy * dy || 1;
+                const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lengthSq));
+                return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+            }
+
+            function aiChooseMove(player, opponent) {
+                const level = document.getElementById('difficulty').value;
+                const target = ammoCrate && player.ammo < 7 ? ammoCrate : opponent;
+                const directions = [
+                    [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, 0]
+                ];
+                let best = null;
+                let bestScore = -Infinity;
+                for (const [dx0, dy0] of directions) {
+                    const norm = Math.hypot(dx0, dy0) || 1;
+                    const dx = dx0 / norm;
+                    const dy = dy0 / norm;
+                    const testX = player.x + dx * 88;
+                    const testY = player.y + dy * 88;
+                    if (blocked(testX, testY, player.radius)) continue;
+                    const goalDistance = Math.hypot(target.x - testX, target.y - testY);
+                    let risk = 0;
+                    if (level !== 'low') {
+                        for (const bullet of bullets) {
+                            const path = traceBullet(bullet, level === 'high' ? 1.05 : .72);
+                            for (let index = 0; index < path.length; index++) {
+                                const progress = (index + 1) / path.length;
+                                const playerX = player.x + dx * 225 * progress * (level === 'high' ? .85 : .6);
+                                const playerY = player.y + dy * 225 * progress * (level === 'high' ? .85 : .6);
+                                const separation = Math.hypot(playerX - path[index].x, playerY - path[index].y);
+                                risk = Math.max(risk, separation < 34 ? (34 - separation) * (level === 'high' ? 10 : 6) : 0);
+                            }
+                        }
+                    } else if (Math.random() < .18) risk = 140;
+                    const centerBias = Math.hypot(testX - 480, testY - 300) * (level === 'high' ? .026 : .01);
+                    const approach = (Math.hypot(target.x - player.x, target.y - player.y) - goalDistance) * (level === 'low' ? .24 : .13);
+                    const wobble = Math.random() * (level === 'high' ? 5 : 20);
+                    const score = approach - risk - centerBias + wobble;
+                    if (score > bestScore) { bestScore = score; best = { x: dx, y: dy }; }
+                }
+                return best || { x: 0, y: 0 };
+            }
+
+            function chooseEscapeVector(player, target) {
+                let best = null;
+                let bestScore = -Infinity;
+                const startDistance = Math.hypot(target.x - player.x, target.y - player.y);
+                for (let direction = 0; direction < 16; direction++) {
+                    const angle = direction * Math.PI / 8;
+                    const dx = Math.cos(angle);
+                    const dy = Math.sin(angle);
+                    let clearDistance = 0;
+                    for (let distance = 8; distance <= 104; distance += 8) {
+                        if (blocked(player.x + dx * distance, player.y + dy * distance, player.radius)) break;
+                        clearDistance = distance;
+                    }
+                    if (clearDistance < 32) continue;
+                    const targetDistance = Math.hypot(target.x - (player.x + dx * clearDistance), target.y - (player.y + dy * clearDistance));
+                    const score = (startDistance - targetDistance) * .8 + clearDistance * .15 + Math.random() * 8;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        best = { x: dx, y: dy };
+                    }
+                }
+                return best;
+            }
+
+            function updateAI(player, opponent, dt) {
+                const level = document.getElementById('difficulty').value;
+                player.aiEscapeTime = Math.max(0, player.aiEscapeTime - dt);
+                player.aiProgressCheck += dt;
+                if (player.aiProgressCheck >= .4) {
+                    const elapsed = player.aiProgressCheck;
+                    const traveled = Math.hypot(player.x - player.aiLastX, player.y - player.aiLastY);
+                    const target = ammoCrate && player.ammo < 7 ? ammoCrate : opponent;
+                    const wantsToMove = Math.hypot(player.aiMoveX, player.aiMoveY) > .2 || Math.hypot(target.x - player.x, target.y - player.y) > 80;
+                    player.aiStuckTime = wantsToMove && traveled < 7 ? player.aiStuckTime + elapsed : Math.max(0, player.aiStuckTime - elapsed * 2);
+                    player.aiLastX = player.x;
+                    player.aiLastY = player.y;
+                    player.aiProgressCheck = 0;
+                    if (player.aiStuckTime >= .8) {
+                        const escape = chooseEscapeVector(player, target);
+                        if (escape) {
+                            player.aiMoveX = escape.x;
+                            player.aiMoveY = escape.y;
+                            player.aiEscapeTime = .7;
+                            if (player.dashCooldown <= 0) attemptDash(player);
+                        }
+                        player.aiStuckTime = 0;
+                    }
+                }
+                player.aiThink -= dt;
+                player.aiFire -= dt;
+                player.aiGate -= dt;
+                if (player.aiThink <= 0) {
+                    player.aiThink = level === 'high' ? .085 : level === 'medium' ? .16 : .3;
+                    if (player.aiEscapeTime <= 0) {
+                        const move = aiChooseMove(player, opponent);
+                        player.aiMoveX = move.x;
+                        player.aiMoveY = move.y;
+                    }
+                    const nearestThreat = bullets.some((bullet) => distancePointSegment(player.x, player.y, bullet.x, bullet.y, bullet.x + bullet.vx * .3, bullet.y + bullet.vy * .3) < 52);
+                    if (level !== 'low' && nearestThreat && player.dashCooldown <= 0) attemptDash(player);
+                }
+                if (level === 'high') {
+                    const lead = .18;
+                    const aimX = opponent.x + opponent.vx * lead - player.x;
+                    const aimY = opponent.y + opponent.vy * lead - player.y;
+                    if (Math.abs(aimX) > Math.abs(aimY)) { player.dx = Math.sign(aimX); player.dy = 0; }
+                    else { player.dx = 0; player.dy = Math.sign(aimY); }
+                } else {
+                    const aimX = opponent.x - player.x;
+                    const aimY = opponent.y - player.y;
+                    if (Math.abs(aimX) > Math.abs(aimY)) { player.dx = Math.sign(aimX); player.dy = 0; }
+                    else { player.dx = 0; player.dy = Math.sign(aimY); }
+                }
+                const aimDistance = Math.hypot(opponent.x - player.x, opponent.y - player.y);
+                const aligned = Math.abs(player.dx) > 0 ? Math.abs(opponent.y - player.y) < (level === 'high' ? 55 : 35) : Math.abs(opponent.x - player.x) < (level === 'high' ? 55 : 35);
+                const fireRate = level === 'low' ? .92 : level === 'medium' ? 1.12 : .73;
+                if (player.aiFire <= 0 && player.ammo > 0 && (aligned || level === 'low' || aimDistance < 300)) {
+                    player.aiFire = fireRate + Math.random() * (level === 'high' ? .24 : .7);
+                    fire(player);
+                }
+                if (player.aiGate <= 0 && level === 'high' && bullets.length >= 4 && Math.hypot(player.x - 480, player.y - 300) < 155) {
+                    player.aiGate = 4;
+                    activateGate(player);
+                }
+                if (ammoCrate && player.ammo < 4 && level === 'low' && Math.random() < dt * .12) {
+                    player.aiMoveX = Math.sign(ammoCrate.x - player.x);
+                    player.aiMoveY = Math.sign(ammoCrate.y - player.y);
+                }
+            }
+
+            function updatePlayer(player, opponent, dt) {
+                player.cooldown = Math.max(0, player.cooldown - dt);
+                player.dashCooldown = Math.max(0, player.dashCooldown - dt);
+                player.dashTime = Math.max(0, player.dashTime - dt);
+                player.invulnerable = Math.max(0, player.invulnerable - dt);
+                player.flash = Math.max(0, player.flash - dt);
+                player.dryClick = Math.max(0, player.dryClick - dt);
+                let mx = 0;
+                let my = 0;
+                if (player.ai) {
+                    updateAI(player, opponent, dt);
+                    mx = player.aiMoveX;
+                    my = player.aiMoveY;
+                } else {
+                    const isFirst = player.id === 0;
+                    mx = Number(keys.has(isFirst ? 'd' : 'arrowright')) - Number(keys.has(isFirst ? 'a' : 'arrowleft'));
+                    my = Number(keys.has(isFirst ? 's' : 'arrowdown')) - Number(keys.has(isFirst ? 'w' : 'arrowup'));
+                    if (keys.has(isFirst ? ' ' : 'enter')) fire(player);
+                }
+                movePlayer(player, mx, my, dt);
+            }
+
+            function update(dt) {
+                if (phase !== 'round') return;
+                roundElapsed += dt;
+                gateTimer = Math.max(0, gateTimer - dt);
+                gateCooldown = Math.max(0, gateCooldown - dt);
+                ammoTimer -= dt;
+                if (!ammoCrate && ammoTimer <= 0) {
+                    spawnAmmo();
+                    ammoTimer = 8 + Math.random() * 3;
+                }
+                if (ammoCrate) {
+                    ammoCrate.time -= dt;
+                    ammoCrate.pulse += dt;
+                    if (ammoCrate.time <= 0) ammoCrate = null;
+                }
+                updatePlayer(players[0], players[1], dt);
+                updatePlayer(players[1], players[0], dt);
+                for (let index = bullets.length - 1; index >= 0; index--) {
+                    const bullet = bullets[index];
+                    advanceBullet(bullet, dt, true);
+                    bullet.age += dt;
+                    for (const player of players) {
+                        if (player.invulnerable > 0 || (bullet.owner === player.id && bullet.age < bullet.ownerGrace)) continue;
+                        if (Math.hypot(player.x - bullet.x, player.y - bullet.y) < player.radius + 3) {
+                            endRound(1 - player.id);
+                            return;
+                        }
+                    }
+                }
+                for (const player of players) {
+                    if (ammoCrate && Math.hypot(player.x - ammoCrate.x, player.y - ammoCrate.y) < player.radius + 17) {
+                        player.ammo = Math.min(8, player.ammo + 4);
+                        ammoCrate = null;
+                        tone(690, .12, 'sine', .024);
+                        window.setTimeout(() => tone(920, .15, 'sine', .03), 65);
+                        setEvent('Four rounds loaded. Everyone heard the pickup.', `Player ${player.id + 1} took the crate.`);
+                    }
+                }
+                if (roundElapsed > 180) endRound(players[0].ammo >= players[1].ammo ? 0 : 1);
+                updateHud();
+            }
+
+            function bulletColor(bullet) {
+                if (bullet.bounces < 4) return '#f4fbff';
+                if (bullet.bounces < 12) return '#ff9a45';
+                return '#fa52dc';
+            }
+
+            function drawBlock(block) {
+                ctx.save();
+                ctx.translate(block.cx, block.cy);
+                ctx.rotate(block.angle);
+                ctx.fillStyle = block.deflector ? '#273946' : '#26303c';
+                ctx.strokeStyle = block.deflector ? '#68b7ad' : '#526071';
+                ctx.lineWidth = block.deflector ? 2 : 1.5;
+                ctx.beginPath();
+                ctx.rect(-block.w / 2, -block.h / 2, block.w, block.h);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = block.deflector ? 'rgba(102,228,209,.16)' : 'rgba(255,255,255,.035)';
+                ctx.fillRect(-block.w / 2 + 4, -block.h / 2 + 4, block.w - 8, Math.max(2, block.h - 8));
+                ctx.restore();
+            }
+
+            function drawWorld() {
+                ctx.fillStyle = palette.floor;
+                ctx.fillRect(0, 0, world.width, world.height);
+                ctx.strokeStyle = 'rgba(144,166,185,.055)';
+                ctx.lineWidth = 1;
+                for (let x = 40; x < world.width; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, world.height); ctx.stroke(); }
+                for (let y = 40; y < world.height; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(world.width, y); ctx.stroke(); }
+                ctx.strokeStyle = 'rgba(113,153,167,.18)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(world.margin, world.margin, world.width - world.margin * 2, world.height - world.margin * 2);
+                ctx.strokeStyle = 'rgba(102,228,209,.1)';
+                ctx.setLineDash([6, 10]);
+                ctx.strokeRect(54, 54, world.width - 108, world.height - 108);
+                ctx.setLineDash([]);
+                staticBlocks.forEach(drawBlock);
+                if (gateTimer > 0) {
+                    gateBlocks.forEach((block) => {
+                        ctx.save();
+                        ctx.globalAlpha = .68 + Math.sin(performance.now() * .02) * .18;
+                        ctx.fillStyle = '#f5c46a';
+                        ctx.shadowColor = '#f5c46a';
+                        ctx.shadowBlur = 17;
+                        ctx.fillRect(block.cx - block.w / 2, block.cy - block.h / 2, block.w, block.h);
+                        ctx.restore();
+                    });
+                }
+                ctx.beginPath();
+                ctx.arc(480, 300, 22, 0, Math.PI * 2);
+                ctx.fillStyle = gateCooldown <= 0 ? 'rgba(245,196,106,.16)' : 'rgba(150,160,169,.08)';
+                ctx.fill();
+                ctx.strokeStyle = gateCooldown <= 0 ? 'rgba(245,196,106,.7)' : 'rgba(150,160,169,.28)';
+                ctx.stroke();
+                ctx.fillStyle = gateCooldown <= 0 ? '#f5c46a' : '#74808c';
+                ctx.font = '700 10px ui-monospace, monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(gateTimer > 0 ? gateTimer.toFixed(1) : 'E', 480, 304);
+            }
+
+            function drawCrate() {
+                if (!ammoCrate) return;
+                const pulse = 1 + Math.sin(ammoCrate.pulse * 5) * .12;
+                ctx.save();
+                ctx.translate(ammoCrate.x, ammoCrate.y);
+                ctx.rotate(Math.PI / 4);
+                ctx.scale(pulse, pulse);
+                ctx.shadowColor = '#f5c46a';
+                ctx.shadowBlur = 20;
+                ctx.fillStyle = '#d7a643';
+                ctx.fillRect(-11, -11, 22, 22);
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = '#fff0bd';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-7, -7, 14, 14);
+                ctx.restore();
+                ctx.strokeStyle = `rgba(245,196,106,${.2 + .16 * Math.sin(ammoCrate.pulse * 5)})`;
+                ctx.beginPath();
+                ctx.arc(ammoCrate.x, ammoCrate.y, 25 + Math.sin(ammoCrate.pulse * 5) * 2, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            function drawPlayers() {
+                players.forEach((player) => {
+                    ctx.save();
+                    if (player.invulnerable > 0) ctx.globalAlpha = .55 + Math.abs(Math.sin(performance.now() * .035)) * .45;
+                    if (player.flash > 0) {
+                        ctx.fillStyle = player.color;
+                        ctx.globalAlpha = player.flash * 3;
+                        ctx.beginPath();
+                        ctx.arc(player.x - player.dx * 19, player.y - player.dy * 19, 19 + player.flash * 50, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.globalAlpha = 1;
+                    }
+                    if (player.dashCooldown > 1.92) {
+                        ctx.beginPath();
+                        ctx.arc(player.x, player.y, player.radius + 6, 0, Math.PI * 2);
+                        ctx.strokeStyle = player.color;
+                        ctx.globalAlpha = player.dashCooldown > 2.05 ? .8 : .3;
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+                    ctx.shadowColor = player.color;
+                    ctx.shadowBlur = 16;
+                    ctx.fillStyle = player.color;
+                    ctx.beginPath();
+                    ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = '#111820';
+                    ctx.beginPath();
+                    ctx.arc(player.x + player.dx * 5, player.y + player.dy * 5, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+            }
+
+            function drawBullets() {
+                bullets.forEach((bullet) => {
+                    const color = bulletColor(bullet);
+                    ctx.save();
+                    for (const point of bullet.trail) {
+                        ctx.globalAlpha = Math.max(0, point.time / .18) * .45;
+                        ctx.fillStyle = color;
+                        ctx.beginPath();
+                        ctx.arc(point.x, point.y, 5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.globalAlpha = 1;
+                    ctx.shadowColor = color;
+                    ctx.shadowBlur = bullet.bounces >= 12 ? 18 : 10;
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(bullet.x, bullet.y, bullet.bounces >= 12 ? 4.6 : 3.7, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+            }
+
+            function draw() {
+                if (!ctx) return;
+                ctx.setTransform(pixelRatio * worldScale, 0, 0, pixelRatio * worldScale, 0, 0);
+                drawWorld();
+                drawCrate();
+                drawBullets();
+                drawPlayers();
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+            }
+
+            function updateHud() {
+                document.getElementById('scoreOne').textContent = scores[0];
+                document.getElementById('scoreTwo').textContent = scores[1];
+                document.getElementById('ammoOne').textContent = `AMMO ${players[0]?.ammo ?? 6}`;
+                document.getElementById('ammoTwo').textContent = `AMMO ${players[1]?.ammo ?? 6}`;
+                document.getElementById('bulletCount').textContent = String(bullets.length);
+                document.getElementById('dropStatus').textContent = ammoCrate ? 'ON FIELD' : phase === 'round' ? `${Math.max(0, Math.ceil(ammoTimer))}s` : '--';
+                document.getElementById('gateStatus').textContent = gateTimer > 0 ? `${gateTimer.toFixed(1)}s` : gateCooldown > 0 ? `${Math.ceil(gateCooldown)}s` : 'READY';
+            }
+
+            function frame(timestamp) {
+                const dt = lastFrame ? Math.min(.034, (timestamp - lastFrame) / 1000) : .016;
+                lastFrame = timestamp;
+                update(dt);
+                draw();
+                requestAnimationFrame(frame);
+            }
+
+            function setMode(value) {
+                if (phase === 'round' || phase === 'paused') return;
+                modeState.value = value;
+                modeButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.id === (value === 'two' ? 'twoPlayerMode' : 'aiMode'))));
+                document.getElementById('difficultyField').hidden = value !== 'ai';
+                document.getElementById('p2Controls').hidden = value === 'ai';
+                document.getElementById('aiControlNote').hidden = value !== 'ai';
+                document.getElementById('playerTwoName').textContent = value === 'ai' ? 'Rival AI' : 'Player Two';
+            }
+
+            function preventKeys(event) {
+                const key = event.key.toLowerCase();
+                if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'enter'].includes(key)) event.preventDefault();
+            }
+
+            window.addEventListener('keydown', (event) => {
+                const key = event.key.toLowerCase();
+                const focusedControl = event.target instanceof Element && event.target.closest('button, select, input, textarea, a');
+                if (focusedControl && key !== 'escape') return;
+                if (key === 'escape' || key === 'p') { togglePause(); return; }
+                if (phase !== 'round') return;
+                preventKeys(event);
+                if (!event.repeat && key === ' ') fire(players[0]);
+                if (!event.repeat && key === 'enter' && modeState.value === 'two') fire(players[1]);
+                if (event.code === 'ShiftRight' && modeState.value === 'two') attemptDash(players[1]);
+                else if (key === 'shift') attemptDash(players[0]);
+                else if (key === 'e') activateGate(players[0]);
+                else if (key === 'control' && event.location === KeyboardEvent.DOM_KEY_LOCATION_RIGHT && modeState.value === 'two') activateGate(players[1]);
+                keys.add(key);
+            });
+            window.addEventListener('keyup', (event) => keys.delete(event.key.toLowerCase()));
+            window.addEventListener('blur', () => keys.clear());
+            canvas.addEventListener('pointerdown', () => canvas.focus());
+            overlayButton.addEventListener('click', () => overlayAction());
+            modeButtons[0].addEventListener('click', () => setMode('two'));
+            modeButtons[1].addEventListener('click', () => setMode('ai'));
+            document.getElementById('pauseBtn').addEventListener('click', togglePause);
+            document.getElementById('restartBtn').addEventListener('click', () => showOverlay('Fresh match', 'Reset the chamber?', 'Current score and all live rounds will be cleared.', 'Start again', startMatch));
+            document.getElementById('soundToggle').addEventListener('click', (event) => {
+                audioEnabled = !audioEnabled;
+                event.currentTarget.textContent = audioEnabled ? 'Audio on' : 'Audio off';
+                event.currentTarget.setAttribute('aria-pressed', String(audioEnabled));
+                if (audioEnabled) {
+                    ensureAudio();
+                    playStartCue();
+                }
+            });
+            document.getElementById('muteBtn').addEventListener('click', () => document.getElementById('soundToggle').click());
+            window.addEventListener('resize', resizeCanvas);
+            if ('ResizeObserver' in window) new ResizeObserver(resizeCanvas).observe(canvas);
+            const launchOptions = new URLSearchParams(window.location.search);
+            const launchMode = launchOptions.get('mode') === 'ai' ? 'ai' : 'two';
+            if (launchMode === 'ai' && ['low', 'medium', 'high'].includes(launchOptions.get('difficulty'))) {
+                document.getElementById('difficulty').value = launchOptions.get('difficulty');
+            }
+            setMode(launchMode);
+            resizeCanvas();
+            updateHud();
+            requestAnimationFrame(frame);
+        })();
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+    </script>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#10131c">
+    <meta name="description" content="A growing collection of quick local mini-games. Play Ricochet or Five Arrows offline against a friend or AI.">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" href="./icon.svg" type="image/svg+xml">
+    <title>Mini Games Arcade</title>
+    <style>
+        :root { color-scheme:dark; --page:#10131c; --panel:#191f29; --panel2:#222b35; --line:#36414d; --text:#eef2f4; --muted:#9da9b2; --mint:#72e0cb; --ember:#ff836d; --gold:#efc46e; font-family:"Avenir Next",Avenir,"Trebuchet MS",sans-serif; background:var(--page); color:var(--text); }
+        * { box-sizing:border-box; }
+        body { min-width:320px; min-height:100vh; margin:0; background:radial-gradient(ellipse at 68% 0%,#243139 0,#10131c 54%); }
+        a { color:inherit; }
+        button { font:inherit; }
+        button:focus-visible,a:focus-visible { outline:3px solid var(--gold); outline-offset:3px; }
+        .topbar { min-height:66px; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:10px max(20px,calc((100vw - 1200px)/2)); border-bottom:1px solid rgba(208,220,224,.13); background:rgba(16,19,28,.76); }
+        .wordmark { display:flex; align-items:center; gap:12px; text-decoration:none; }
+        .mark { width:30px; height:30px; display:grid; place-items:center; border:1px solid var(--mint); color:var(--mint); transform:rotate(45deg); }
+        .mark b { transform:rotate(-45deg); font-size:.8rem; }
+        .wordmark strong { font-size:.75rem; letter-spacing:.14em; }
+        .top-actions { display:flex; align-items:center; gap:12px; }
+        .offline-note { color:var(--muted); font:700 .62rem ui-monospace,monospace; letter-spacing:.1em; }
+        #installButton { min-height:36px; padding:7px 12px; border:1px solid var(--line); border-radius:4px; background:var(--panel2); color:var(--text); font-size:.7rem; font-weight:800; cursor:pointer; }
+        #installButton[hidden] { display:none; }
+        #installButton:hover { border-color:var(--mint); }
+        main { width:min(100% - 40px,1200px); margin:0 auto; }
+        .intro { min-height:205px; display:flex; align-items:end; justify-content:space-between; gap:28px; padding:50px 0 30px; }
+        .eyebrow { margin:0 0 12px; color:var(--mint); font-size:.66rem; font-weight:850; letter-spacing:.17em; text-transform:uppercase; }
+        h1 { margin:0; font-size:clamp(2rem,4vw,3.55rem); line-height:1; }
+        .intro-copy { max-width:365px; margin:0 0 3px; color:#b0bbc2; font-size:.88rem; line-height:1.55; }
+        .library-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; }
+        .library-head h2 { margin:0; font-size:.72rem; letter-spacing:.12em; text-transform:uppercase; }
+        .library-count { color:var(--muted); font:700 .65rem ui-monospace,monospace; }
+        .feature { min-height:310px; display:grid; grid-template-columns:1.1fr .9fr; border:1px solid var(--line); background:linear-gradient(112deg,#19222b,#151a23 62%); }
+        .feature + .feature { margin-top:10px; }
+        .duel-feature .feature-art { order:2; }
+        .duel-feature .feature-copy { order:1; }
+        .feature-art { position:relative; min-width:0; overflow:hidden; display:grid; place-items:center; padding:22px; background:#0b1118; }
+        .feature-art:after { position:absolute; inset:0; content:""; pointer-events:none; background:linear-gradient(90deg,transparent 58%,rgba(21,26,35,.75)); }
+        .feature-art svg { width:min(100%,520px); height:auto; }
+        .feature-copy { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; padding:28px clamp(20px,4vw,46px); }
+        .feature-index { color:var(--mint); font:800 .64rem ui-monospace,monospace; letter-spacing:.13em; text-transform:uppercase; }
+        .feature-copy h3 { margin:12px 0 10px; font-size:clamp(1.4rem,3vw,2.1rem); line-height:1.06; }
+        .feature-copy p { max-width:360px; margin:0; color:var(--muted); font-size:.82rem; line-height:1.55; }
+        .feature-meta { display:flex; flex-wrap:wrap; gap:7px; margin:16px 0 19px; }
+        .feature-meta span { padding:5px 8px; border:1px solid var(--line); color:#c6d0d4; font:700 .59rem ui-monospace,monospace; letter-spacing:.05em; }
+        .play-link { min-width:150px; min-height:42px; display:inline-flex; justify-content:space-between; align-items:center; gap:18px; padding:9px 13px; border:1px solid var(--mint); border-radius:4px; background:var(--mint); color:#0c1719; font-size:.77rem; font-weight:850; text-decoration:none; }
+        .play-link:hover { filter:brightness(1.07); }
+        .play-link span:last-child { font-size:1.05rem; }
+        .upcoming { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:10px; }
+        .slot { min-height:92px; display:flex; align-items:center; gap:13px; padding:15px; border:1px dashed #3a444c; background:rgba(25,31,41,.55); }
+        .slot-number { color:#718089; font:800 .72rem ui-monospace,monospace; }
+        .slot-label { color:#8d9aa2; font-size:.68rem; font-weight:750; line-height:1.35; }
+        .collection-note { margin:13px 0 0; color:var(--muted); font-size:.67rem; }
+        footer { display:flex; justify-content:space-between; gap:16px; padding:30px 0 20px; color:#829099; font-size:.62rem; }
+        @media(max-width:760px) { .intro { align-items:flex-start; flex-direction:column; gap:14px; } .intro-copy { max-width:520px; } .feature { grid-template-columns:1fr; } .feature-art { max-height:250px; } .feature-art:after { background:linear-gradient(0deg,rgba(21,26,35,.6),transparent 40%); } .feature-copy { padding:24px; } .upcoming { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+        @media(max-width:480px) { .topbar { min-height:58px; padding-inline:15px; } .offline-note { display:none; } main { width:min(100% - 28px,1200px); } .intro { min-height:0; padding:36px 0 25px; } h1 { font-size:2.5rem; } .feature-art { max-height:195px; padding:12px; } .feature-copy { padding:20px; } .upcoming { gap:7px; } .slot { min-height:74px; gap:9px; padding:10px; } .slot-label { font-size:.62rem; } footer { flex-direction:column; gap:7px; } }
+        @media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto !important; transition-duration:.01ms !important; } }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <a class="wordmark" href="./" aria-label="Mini Games home"><span class="mark" aria-hidden="true"><b>M</b></span><strong>MINI GAMES</strong></a>
+        <div class="top-actions"><span class="offline-note">OFFLINE READY</span><button id="installButton" type="button" hidden>Install app</button></div>
+    </header>
+    <main>
+        <section class="intro" aria-labelledby="pageTitle">
+            <div><p class="eyebrow">A small arcade · growing collection</p><h1 id="pageTitle">Pick a game. Jump in.</h1></div>
+            <p class="intro-copy">Quick rounds, local play, and no accounts to get in the way. Choose the ricochet maze or test your nerve in the sword-and-bow duel.</p>
+        </section>
+        <section aria-labelledby="libraryTitle">
+            <div class="library-head"><h2 id="libraryTitle">The collection</h2><span class="library-count">02 PLAYABLE / 05 PLANNED</span></div>
+            <article class="feature">
+                <div class="feature-art" aria-label="Chamber Maze arena illustration">
+                    <svg viewBox="0 0 720 430" role="img" aria-labelledby="mazeTitle">
+                        <title id="mazeTitle">Top-down loop maze with two players and ricocheting rounds</title>
+                        <defs><pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M28 0H0V28" fill="none" stroke="#b5c5c6" stroke-opacity=".07"/></pattern><filter id="glow"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+                        <rect x="22" y="18" width="676" height="394" fill="#0c1219" stroke="#53636c" stroke-opacity=".55"/><rect x="22" y="18" width="676" height="394" fill="url(#grid)"/>
+                        <g fill="#26333d" stroke="#72828a" stroke-opacity=".8" stroke-width="2"><path d="M95 76h62v48H95zM563 76h62v48h-62zM95 306h62v48H95zM563 306h62v48h-62z"/><path d="M292 135h136v11H292zM292 284h136v11H292zM282 154h11v55h-11zM427 154h11v55h-11zM282 221h11v55h-11zM427 221h11v55h-11z"/></g>
+                        <g fill="#294447" stroke="#79c9ba" stroke-width="2"><path d="m218 123 14 14-14 14-14-14zM502 123l14 14-14 14-14-14zM218 279l14 14-14 14-14-14zM502 279l14 14-14 14-14-14zM360 55l14 14-14 14-14-14zM360 337l14 14-14 14-14-14z"/></g>
+                        <g fill="none" stroke="#73e2ce" stroke-opacity=".3" stroke-width="2" stroke-dasharray="6 9"><path d="M54 215h612M360 40v350M120 45c120 115 360 245 480 340M600 45C480 160 240 290 120 385"/></g>
+                        <g filter="url(#glow)"><circle cx="125" cy="215" r="11" fill="#72e0cb"/><circle cx="595" cy="215" r="11" fill="#ff836d"/><circle cx="329" cy="215" r="4" fill="#f3f7fa"/><circle cx="474" cy="153" r="4" fill="#ff9a45"/><circle cx="259" cy="277" r="4" fill="#fa52dc"/></g>
+                    </svg>
+                </div>
+                <div class="feature-copy">
+                    <span class="feature-index">GAME 01 / CHAMBER DUEL</span>
+                    <h3>Ricochet:<br>Chamber Maze</h3>
+                    <p>Every missed shot stays alive. Read the angles, bait your rival, and keep moving when the corridors start to sing.</p>
+                    <div class="feature-meta"><span>TWO PLAYER</span><span>VS AI</span><span>OFFLINE</span></div>
+                    <a class="play-link" href="ricochet.html"><span>Play Ricochet</span><span aria-hidden="true">&#8594;</span></a>
+                </div>
+            </article>
+            <article class="feature duel-feature">
+                <div class="feature-art" aria-label="Sword-and-bow duel illustration">
+                    <svg viewBox="0 0 720 430" role="img" aria-labelledby="duelTitle">
+                        <title id="duelTitle">Two duelists, one raised shield, and a flying arrow</title>
+                        <defs><pattern id="duelGrid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#d5c8a9" stroke-opacity=".06"/></pattern><filter id="duelGlow"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+                        <rect x="22" y="18" width="676" height="394" fill="#131a1c" stroke="#64706c" stroke-opacity=".7"/><rect x="22" y="18" width="676" height="394" fill="url(#duelGrid)"/>
+                        <path d="M22 310H698" stroke="#796e57" stroke-width="6"/><path d="M22 318H698V412H22z" fill="#454438"/>
+                        <g stroke-linecap="round" stroke-linejoin="round"><circle cx="177" cy="171" r="24" fill="#d5b78f"/><path d="M147 207q30-20 60 0l17 91h-93z" fill="#276965" stroke="#91d8c8" stroke-width="4"/><path d="m155 298-13 66m61-66 16 66m-70-96-34 40m100-39 40 31" fill="none" stroke="#bec6bb" stroke-width="13"/><path d="m260 231 61-52" stroke="#eee9d9" stroke-width="6"/></g>
+                        <g stroke-linecap="round" stroke-linejoin="round"><circle cx="543" cy="171" r="24" fill="#d5b78f"/><path d="M513 207q30-20 60 0l17 91h-93z" fill="#853f3b" stroke="#eea091" stroke-width="4"/><path d="m521 298-13 66m61-66 16 66m-70-96-34 40m100-39-29 28" fill="none" stroke="#bec6bb" stroke-width="13"/><path d="m497 216q-37 43 0 86m0-86 13 43-13 43" fill="none" stroke="#ddd2b1" stroke-width="5"/></g>
+                        <path d="M302 221h125" stroke="#f3e7c7" stroke-width="4"/><path d="m427 221-18-9v18z" fill="#f3e7c7"/><circle cx="368" cy="221" r="6" fill="#efc46e" filter="url(#duelGlow)"/>
+                        <path d="M333 204l-17-12m17 12-17 12m76-12 17-12m-17 12 17 12" stroke="#efc46e" stroke-width="3"/>
+                    </svg>
+                </div>
+                <div class="feature-copy">
+                    <span class="feature-index">GAME 02 / SWORD &amp; BOW</span>
+                    <h3>Five Arrows:<br>Parry Duel</h3>
+                    <p>Five shots. A slow draw. A shield that can save you or punish a false read. Feint, close the gap, and strike during recovery.</p>
+                    <div class="feature-meta"><span>TWO PLAYER</span><span>THREE AI STYLES</span><span>TOUCH</span></div>
+                    <a class="play-link" href="duel.html"><span>Enter the duel</span><span aria-hidden="true">&#8594;</span></a>
+                </div>
+            </article>
+            <div class="upcoming" aria-label="Three more games are planned">
+                <div class="slot"><span class="slot-number">03</span><span class="slot-label">Next game<br>in development</span></div>
+                <div class="slot"><span class="slot-number">04</span><span class="slot-label">Next game<br>in development</span></div>
+                <div class="slot"><span class="slot-number">05</span><span class="slot-label">Next game<br>in development</span></div>
+            </div>
+        </section>
+        <footer><span>MINI GAMES / LOCAL ARCADE</span><span>One screen. No accounts. Just one more round.</span></footer>
+    </main>
+    <script>
+        let installPrompt;
+        const installButton = document.getElementById('installButton');
+        window.addEventListener('beforeinstallprompt', (event) => { event.preventDefault(); installPrompt = event; installButton.hidden = false; });
+        installButton.addEventListener('click', async () => { if (!installPrompt) return; await installPrompt.prompt(); installPrompt = null; installButton.hidden = true; });
+        window.addEventListener('appinstalled', () => { installButton.hidden = true; });
+        if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+    </script>
+</body>
+</html>

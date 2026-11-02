@@ -1,0 +1,39 @@
+{
+  "id": "./",
+  "name": "Mini Games Arcade",
+  "short_name": "Mini Games",
+  "description": "A growing collection of quick local mini-games, playable offline.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#10131c",
+  "theme_color": "#10131c",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mini Games Arcade",
+      "short_name": "Game library",
+      "url": "./index.html",
+      "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Play Ricochet against AI",
+      "short_name": "Ricochet AI",
+      "url": "./ricochet.html?mode=ai&difficulty=medium",
+      "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Play Five Arrows against AI",
+      "short_name": "Parry Duel",
+      "url": "./duel.html?mode=ai",
+      "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ]
+}
