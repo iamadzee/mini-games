@@ -11,6 +11,7 @@
     <style>
         :root { color-scheme:dark; --page:#10131c; --panel:#191f29; --panel2:#222b35; --line:#36414d; --ink:#eef2f4; --muted:#9da9b2; --mint:#72e0cb; --red:#ff836d; --gold:#efc46e; font-family:"Avenir Next",Avenir,"Trebuchet MS",sans-serif; background:var(--page); color:var(--ink); }
         * { box-sizing:border-box; }
+        [hidden] { display:none !important; }
         body { min-width:320px; min-height:100vh; margin:0; background:radial-gradient(ellipse at 50% 0,#263139 0,#10131c 58%); }
         button,select { font:inherit; }
         button { min-height:36px; padding:7px 11px; border:1px solid var(--line); border-radius:4px; background:var(--panel2); color:var(--ink); font-weight:750; cursor:pointer; }
@@ -56,10 +57,21 @@
         .overlay-panel h2 { margin:10px 0; font-size:clamp(1.6rem,3vw,2.4rem); line-height:1.04; }
         .overlay-panel p { margin:0; color:#b5c0c3; font-size:.83rem; line-height:1.55; }
         .mode-row { display:flex; gap:6px; margin-top:16px; }
+        .mode-row button { flex:1; min-width:0; padding-inline:7px; }
         .mode-row button[aria-pressed="true"] { border-color:var(--mint); color:var(--mint); }
         .difficulty-field { display:grid; gap:5px; margin-top:12px; }
         .difficulty-field label { color:var(--muted); font-size:.68rem; font-weight:750; }
         select { width:min(100%,240px); min-height:36px; padding:7px 9px; border:1px solid var(--line); border-radius:4px; background:var(--panel); color:var(--ink); }
+        .online-field { display:grid; gap:7px; margin-top:12px; }
+        .online-field label { color:var(--muted); font-size:.68rem; font-weight:750; }
+        .room-controls { display:grid; grid-template-columns:1fr minmax(84px,.8fr) 1fr; gap:5px; }
+        .room-controls button { min-width:0; padding-inline:6px; font-size:.68rem; }
+        .room-controls input { width:100%; min-width:0; min-height:36px; padding:6px 8px; border:1px solid var(--line); border-radius:4px; background:var(--page); color:var(--ink); font:800 .76rem ui-monospace,monospace; text-transform:uppercase; }
+        .room-share { display:flex; gap:6px; }
+        .room-share button { flex:1; }
+        .online-status,.online-note { margin:0; color:var(--muted); font-size:.65rem; line-height:1.4; }
+        .online-status { color:var(--mint); }
+        .online-note { color:#829099; }
         .overlay-actions { display:flex; gap:8px; margin-top:17px; }
         .overlay-actions .primary { border-color:var(--gold); background:var(--gold); color:#171713; }
         .eventbar { min-height:39px; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 11px; border:1px solid var(--line); border-top:0; background:var(--panel); }
@@ -77,6 +89,7 @@
         .fineprint { margin:8px 0 0; color:var(--muted); font-size:.62rem; line-height:1.45; }
         .touch-area { display:none; }
         .touch-player { padding:9px; border:1px solid var(--line); background:var(--panel); }
+        .touch-player[hidden] { display:none !important; }
         .touch-title { margin-bottom:7px; color:var(--muted); font-size:.6rem; font-weight:850; letter-spacing:.1em; text-transform:uppercase; }
         .touch-buttons { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:5px; }
         .touch-buttons button { min-width:0; min-height:42px; padding:5px 2px; font-size:.68rem; touch-action:none; user-select:none; -webkit-user-select:none; }
@@ -86,7 +99,7 @@
         .hidden { display:none !important; }
         @media(max-width:980px) { .match-layout { grid-template-columns:minmax(0,1fr) 220px; gap:9px; } .section { padding:10px; } }
         @media(max-width:760px) { main { width:min(100% - 20px,1320px); } .match-layout { grid-template-columns:1fr; } .side { grid-template-columns:repeat(2,minmax(0,1fr)); } .touch-area { display:grid; gap:7px; } }
-        @media(max-width:480px) { header { min-height:54px; padding-inline:10px; } .back-link { font-size:.66rem; } .brand { gap:8px; } .brand-mark { width:23px; height:23px; } h1 { font-size:.8rem; } .match-tag { font-size:.54rem; } main { width:min(100% - 12px,1320px); padding-top:7px; } .scorebar { min-height:60px; gap:5px; padding:7px; } .fighter-name { font-size:.55rem; } .health i { width:14px; height:4px; } .quiver { gap:2px; } .quiver-arrow { width:16px; font-size:.7rem; } .quiver-label { font-size:.5rem; } .side { gap:7px; } .section { padding:9px; } .rules { font-size:.61rem; } .touch-buttons button { font-size:.6rem; } .overlay-panel { padding:17px; } }
+        @media(max-width:480px) { header { min-height:54px; padding-inline:10px; } .back-link { font-size:.66rem; } .brand { gap:8px; } .brand-mark { width:23px; height:23px; } h1 { font-size:.8rem; } .match-tag { font-size:.54rem; } main { width:min(100% - 12px,1320px); padding-top:7px; } .scorebar { min-height:60px; gap:5px; padding:7px; } .fighter-name { font-size:.55rem; } .health i { width:14px; height:4px; } .quiver { gap:2px; } .quiver-arrow { width:16px; font-size:.7rem; } .quiver-label { font-size:.5rem; } .side { gap:7px; } .section { padding:9px; } .rules { font-size:.61rem; } .touch-buttons { grid-template-columns:repeat(4,minmax(0,1fr)); } .touch-buttons button { min-height:48px; font-size:.68rem; } .overlay-panel { padding:17px; } .room-controls { grid-template-columns:1fr 1fr; } .room-controls input { grid-column:1 / -1; grid-row:1; } }
         @media(prefers-reduced-motion:reduce) { *,*::before,*::after { transition-duration:.01ms !important; } }
     </style>
 </head>
@@ -110,8 +123,15 @@
                             <span class="kicker" id="overlayKicker">Five arrows. One clean read.</span>
                             <h2 id="overlayTitle">The first one to blink loses.</h2>
                             <p id="overlayText">Draw slowly. A blade can interrupt you. A shield can break an arrow, but a mistimed parry costs health.</p>
-                            <div class="mode-row"><button id="twoMode" type="button" aria-pressed="true">Two player</button><button id="aiMode" type="button" aria-pressed="false">Vs AI</button></div>
+                            <div class="mode-row"><button id="twoMode" type="button" aria-pressed="true">Two player</button><button id="aiMode" type="button" aria-pressed="false">Vs AI</button><button id="onlineMode" type="button" aria-pressed="false">Online</button></div>
                             <div class="difficulty-field" id="difficultyField" hidden><label for="difficulty">Opponent style</label><select id="difficulty"><option value="novice">Novice · panic shots</option><option value="skilled" selected>Skilled · punishes recovery</option><option value="swordmaster">Swordmaster · holds the threat</option></select></div>
+                            <div class="online-field" id="onlineField" hidden>
+                                <label for="roomCode">Room code</label>
+                                <div class="room-controls"><button id="hostRoom" type="button">Host room</button><input id="roomCode" type="text" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="6-CHAR CODE" aria-label="Six character room code"><button id="joinRoom" type="button">Join</button></div>
+                                <div class="room-share" id="roomShare" hidden><button id="copyRoom" type="button">Copy room code</button></div>
+                                <p class="online-status" id="onlineStatus" aria-live="polite">Host a room or enter a friend’s code.</p>
+                                <p class="online-note">Internet required. Open this game over HTTPS on both devices.</p>
+                            </div>
                             <div class="overlay-actions"><button class="primary" id="overlayAction" type="button">Enter the ring</button></div>
                         </div>
                     </div>
@@ -119,7 +139,7 @@
                 <div class="eventbar"><div class="event" id="event" aria-live="polite"><strong>Ready.</strong> Choose a mode.</div><span class="round-tag" id="roundLabel">ROUND 1</span></div>
             </section>
             <aside class="side" aria-label="Controls and rules">
-                <section class="section"><h2>Player One</h2><div class="rules">
+                <section class="section" id="playerOneRules"><h2>Player One</h2><div class="rules">
                     <div class="rule"><span>Move</span><span class="keys"><kbd>A</kbd><kbd>D</kbd></span></div><div class="rule"><span>Crouch / jump</span><span class="keys"><kbd>S</kbd><kbd>W</kbd></span></div>
                     <div class="rule"><span>Slash</span><kbd>F</kbd></div><div class="rule"><span>Parry</span><kbd>G</kbd></div><div class="rule"><span>Hold / release bow</span><kbd>R</kbd></div>
                 </div></section>
@@ -127,11 +147,11 @@
                     <div class="rule"><span>Move</span><span class="keys"><kbd>&#8592;</kbd><kbd>&#8594;</kbd></span></div><div class="rule"><span>Crouch / jump</span><span class="keys"><kbd>&#8595;</kbd><kbd>&#8593;</kbd></span></div>
                     <div class="rule"><span>Slash</span><kbd>.</kbd></div><div class="rule"><span>Parry</span><kbd>/</kbd></div><div class="rule"><span>Hold / release bow</span><kbd>,</kbd></div>
                 </div></section>
-                <section class="section"><h2>Round rules</h2><div class="rules"><div>Five arrows each. No refills.</div><div>Draw for 300 ms; movement slows while nocking.</div><div>A close slash interrupts a draw.</div><div>Parry arrows cleanly, or lose health on a whiff.</div></div><button class="sound-button" id="soundButton" type="button" aria-pressed="true">Audio on</button></section>
+                <section class="section"><h2>Round rules</h2><div class="rules"><div>Five arrows each. No refills.</div><div>Draw for 300 ms; movement slows while nocking.</div><div>A close slash interrupts a draw.</div><div>Parry arrows cleanly, or lose health on a whiff.</div></div><p class="fineprint">While drawing, W / ↑ aims up and S / ↓ aims down. Jump between levels; arrows and slams break cardboard.</p><button class="sound-button" id="soundButton" type="button" aria-pressed="true">Audio on</button></section>
             </aside>
             <section class="touch-area" aria-label="Touch controls">
-                <div class="touch-player" id="touchOne"><div class="touch-title">Player One</div><div class="touch-buttons"><button type="button" data-player="0" data-action="left">&#9664;</button><button type="button" data-player="0" data-action="right">&#9654;</button><button type="button" data-player="0" data-action="crouch">Duck</button><button type="button" data-player="0" data-action="jump">Jump</button><button type="button" data-player="0" data-action="slash">Slash</button><button type="button" data-player="0" data-action="parry">Shield</button><button type="button" data-player="0" data-action="bow">&#10142; <span class="touch-arrows">5</span></button></div></div>
-                <div class="touch-player" id="touchTwo"><div class="touch-title">Player Two</div><div class="touch-buttons"><button type="button" data-player="1" data-action="left">&#9664;</button><button type="button" data-player="1" data-action="right">&#9654;</button><button type="button" data-player="1" data-action="crouch">Duck</button><button type="button" data-player="1" data-action="jump">Jump</button><button type="button" data-player="1" data-action="slash">Slash</button><button type="button" data-player="1" data-action="parry">Shield</button><button type="button" data-player="1" data-action="bow">&#10142; <span class="touch-arrows">5</span></button></div><p class="mobile-note">Hold the arrow button to draw; release to shoot.</p></div>
+                <div class="touch-player" id="touchOne"><div class="touch-title">Player One</div><div class="touch-buttons"><button type="button" data-player="0" data-action="left">&#9664;</button><button type="button" data-player="0" data-action="right">&#9654;</button><button type="button" data-player="0" data-action="crouch">Duck</button><button type="button" data-player="0" data-action="jump">Jump</button><button type="button" data-player="0" data-action="slash">Slash</button><button type="button" data-player="0" data-action="parry">Shield</button><button type="button" data-player="0" data-action="bow">&#10142; <span class="touch-arrows">5</span></button></div><p class="mobile-note">Hold Bow to draw; release to shoot. Duck / Jump aim while drawing.</p></div>
+                <div class="touch-player" id="touchTwo"><div class="touch-title">Player Two</div><div class="touch-buttons"><button type="button" data-player="1" data-action="left">&#9664;</button><button type="button" data-player="1" data-action="right">&#9654;</button><button type="button" data-player="1" data-action="crouch">Duck</button><button type="button" data-player="1" data-action="jump">Jump</button><button type="button" data-player="1" data-action="slash">Slash</button><button type="button" data-player="1" data-action="parry">Shield</button><button type="button" data-player="1" data-action="bow">&#10142; <span class="touch-arrows">5</span></button></div><p class="mobile-note">Hold Bow to draw; release to shoot. Duck / Jump aim while drawing.</p></div>
             </section>
         </div>
     </main>
@@ -142,6 +162,16 @@
             const W = 1000;
             const H = 512;
             const floorY = 408;
+            const upperFloorY = 250;
+            const upperHeight = floorY - upperFloorY;
+            const upperPlatforms = [
+                { start: 48, end: 230, type: 'stone' },
+                { start: 230, end: 315, type: 'cardboard' },
+                { start: 385, end: 470, type: 'stone' },
+                { start: 530, end: 615, type: 'cardboard' },
+                { start: 615, end: 700, type: 'stone' },
+                { start: 775, end: 952, type: 'stone' }
+            ];
             const keys = new Set();
             const scores = [0, 0];
             let players = [];
@@ -149,6 +179,13 @@
             let stuckArrows = [];
             let particles = [];
             let mode = new URLSearchParams(location.search).get('mode') === 'ai' ? 'ai' : 'two';
+            let networkPeer = null;
+            let networkConnection = null;
+            let networkRole = null;
+            let networkRoomCode = '';
+            let networkScriptPromise = null;
+            let networkSnapshotTimer = 0;
+            let networkResult = null;
             let difficulty = 'skilled';
             let phase = 'menu';
             let round = 1;
@@ -166,16 +203,30 @@
             const MAX_HEALTH = 5;
             const MAX_ARROWS = 5;
             const DRAW_RANGE = 280;
+            const CROUCH_RECOVERY = 2;
+            const SLASH_DASH_SPEED = 820;
             const color = { mint:'#72e0cb', red:'#ff836d', gold:'#efc46e', floor:'#4d5650', sky:'#151e24' };
 
             function makePlayer(id, x) {
                 return { id,x,y:floorY,vx:0,health:MAX_HEALTH,arrows:MAX_ARROWS,facing:id===0?1:-1,
-                    stun:0,slashWindup:0,slashActive:0,slashRecovery:0,slashHit:false,slashCooldown:0,
-                    crouching:false,jumpHeight:0,jumpVelocity:0,slamPending:false,slamActive:0,
+                    stun:0,slashWindup:0,slashActive:0,slashRecovery:0,slashHit:false,slashCooldown:0,slashDashPreviousX:x,
+                    crouching:false,crouchInput:false,crouchLock:0,jumpHeight:0,jumpVelocity:0,grounded:true,floor:0,slamPending:false,slamActive:0,slashSerial:0,slashDashTime:0,
                     parryTime:0,parryPending:false,parryCooldown:0,parrySuccess:false,
-                    drawing:false,drawTime:0,drawCooldown:0,flash:0,
-                    ai:id===1&&mode==='ai',aiDecision:0,aiShotDelay:.35,aiParryDelay:0,aiHoldTarget:null,
+                    drawing:false,drawTime:0,drawCooldown:0,aimVertical:0,flash:0,
+                    ai:id===1&&mode==='ai',aiDecision:0,aiShotDelay:.35,aiParryDelay:0,aiObservedSlash:-1,aiHoldTarget:null,
                     humanMove:0,touchArrows:MAX_ARROWS };
+            }
+
+            function platformAt(x) {
+                return upperPlatforms.find(platform => x >= platform.start && x <= platform.end) || null;
+            }
+
+            function breakCardboard(platform) {
+                if (!platform || platform.type !== 'cardboard' || platform.broken) return false;
+                platform.broken = true;
+                noise(.08,.045);
+                setEvent('Cardboard floor broken.','The opening is clear.');
+                return true;
             }
 
             function setEvent(title, detail='') {
@@ -253,11 +304,13 @@
             function beginRound() {
                 players=[makePlayer(0,145),makePlayer(1,855)];
                 arrows=[];stuckArrows=[];particles=[];
+                networkResult=null;networkSnapshotTimer=0;
+                upperPlatforms.forEach(platform=>{platform.broken=false;});
                 phase='round';
                 overlay.hidden=true;
                 canvas.focus({preventScroll:true});
-                document.getElementById('pauseButton').disabled=false;
-                document.getElementById('playerTwoName').textContent=mode==='ai'?'RIVAL AI':'PLAYER TWO';
+                document.getElementById('pauseButton').disabled=mode==='online';
+                document.getElementById('playerTwoName').textContent=mode==='ai'?'RIVAL AI':mode==='online'?'ONLINE PLAYER':'PLAYER TWO';
                 document.getElementById('roundLabel').textContent=`ROUND ${round}`;
                 setEvent('Five arrows each.','Read the shield.');
                 updateHud();
@@ -271,6 +324,7 @@
                 overlayAction.textContent=buttonLabel;
                 nextOverlayAction=action;
                 overlay.hidden=false;
+                syncOnlineOverlay();
             }
 
             function endRound(winnerId,reason) {
@@ -283,8 +337,10 @@
                 document.getElementById('pauseButton').disabled=true;
                 if(scores[winnerId]>=3) showOverlay('Match decided',`${winner} takes the set.`,`${scores[0]} — ${scores[1]}. ${reason}`,'Rematch',startMatch);
                 else showOverlay(`Round ${round} decided`,`${winner} survives.`,`${scores[0]} — ${scores[1]}. ${reason}`,'Next round',()=>{round++;beginRound();});
+                networkResult={winnerId,reason};
                 setEvent(`${winner} wins.`,reason);
                 draw();
+                sendNetworkState();
             }
 
             function startDraw(player) {
@@ -296,6 +352,7 @@
                 }
                 player.drawing=true;
                 player.drawTime=0;
+                player.aimVertical=enemy.floor===player.floor?0:enemy.floor>player.floor?-1:1;
                 player.aiHoldTarget=player.ai?enemy.x:null;
                 player.facing=Math.sign(enemy.x-player.x)||player.facing;
                 if(!player.ai)setEvent('Bow drawing…','Hold for 300 ms.');
@@ -306,6 +363,7 @@
                 if(!player.drawing)return;
                 player.drawing=false;
                 player.drawTime=0;
+                player.aimVertical=0;
                 player.aiHoldTarget=null;
                 player.drawCooldown=.3;
                 if(!player.ai)setEvent(reason,'Arrow retained.');
@@ -316,11 +374,16 @@
                 if(player.drawTime<DRAW_SECONDS){cancelDraw(player,'Draw cancelled.');return;}
                 const enemy=players[1-player.id];
                 const dir=Math.sign(enemy.x-player.x)||player.facing;
+                const x=player.x+dir*31;
+                const y=floorY-player.jumpHeight-67;
                 const aimX=enemy.x+dir*12;
-                arrows.push({x:player.x+dir*31,y:floorY-67,vx:dir*2250,aimX,owner:player.id,age:0,trail:[]});
+                const aimY=y+player.aimVertical*upperHeight;
+                const flightTime=Math.max(.08,Math.abs(aimX-x)/2250);
+                arrows.push({x,y,vx:dir*2250,vy:(aimY-y)/flightTime,aimX,aimY,owner:player.id,age:0,trail:[]});
                 player.arrows--;
                 player.drawing=false;
                 player.drawTime=0;
+                player.aimVertical=0;
                 player.aiHoldTarget=null;
                 player.drawCooldown=.5;
                 player.facing=dir;
@@ -332,15 +395,16 @@
 
             function startSlash(player) {
                 if(phase!=='round'||player.stun>0||player.slashCooldown>0||player.parryTime>0)return;
-                if(player.jumpHeight>6||player.jumpVelocity>280){
+                if(!player.grounded){
                     player.crouching=false;
                     player.slashWindup=.07;
                     player.slashActive=0;
                     player.slashRecovery=.46;
                     player.slashCooldown=2;
                     player.slashHit=false;
+                    player.slashSerial++;
                     player.slamPending=true;
-                    player.jumpVelocity=-980;
+                    player.jumpVelocity=Math.min(player.jumpVelocity,-1050);
                     noise(.1,.045);
                     setEvent('Ground slam.','Landing strike reaches farther ahead.');
                     return;
@@ -350,12 +414,16 @@
                 player.slashRecovery=.34;
                 player.slashHit=false;
                 player.slashCooldown=2;
+                player.slashSerial++;
+                const enemy=players[1-player.id];
+                player.facing=Math.sign(enemy.x-player.x)||player.facing;
+                player.slashDashTime=Math.min(.3,Math.max(.12,(Math.abs(enemy.x-player.x)+48)/SLASH_DASH_SPEED));
                 if(player.drawing&&Math.abs(players[1-player.id].x-player.x)<88)cancelDraw(player,'Blade knocked the bow away.');
                 ping(340,.055,'sawtooth',.025);
             }
 
             function startParry(player) {
-                if(phase!=='round'||player.stun>0||player.parryCooldown>0||player.parryTime>0)return;
+                if(phase!=='round'||player.stun>0||player.crouchLock>0||player.parryCooldown>0||player.parryTime>0)return;
                 player.parryTime=PARRY_SECONDS;
                 player.parryPending=true;
                 player.parrySuccess=false;
@@ -364,10 +432,19 @@
             }
 
             function startJump(player) {
-                if(phase!=='round'||player.stun>0||player.jumpHeight>0||player.jumpVelocity>0||player.crouching||player.drawing)return;
-                player.jumpVelocity=560;
+                if(phase!=='round'||player.stun>0||!player.grounded||player.crouching||player.drawing)return;
+                player.jumpVelocity=790;
                 player.crouching=false;
+                player.grounded=false;
                 ping(310,.07,'sine',.025);
+            }
+
+            function releaseCrouch(player) {
+                if(!player.crouchInput)return;
+                player.crouchInput=false;
+                player.crouchLock=CROUCH_RECOVERY;
+                player.crouching=true;
+                setEvent('Crouch recovery.','Stuck low and vulnerable up close.');
             }
 
             function parryArrow(arrow,defender) {
@@ -387,7 +464,7 @@
                 player.flash=.25;
                 if(player.drawing)cancelDraw(player,'Hit interrupted the draw.');
                 noise(.18,.08);ping(95,.25,'sawtooth',.07);
-                setEvent(source==='arrow'?'Arrow hit.':source==='slam'?'Ground slam connected.':amount>1?'Sword caught your crouch.':'Clean sword hit.',`${player.health} health left.`);
+                setEvent(source==='arrow'?'Arrow hit.':source==='slam'?'Ground slam connected.':amount>1?'Critical sword hit.':'Clean sword hit.',`${player.health} health left.`);
                 if(player.health<=0)endRound(1-player.id,source==='arrow'?'The arrow found its mark.':'The blade won the exchange.');
             }
 
@@ -398,18 +475,12 @@
                 player.parryCooldown=Math.max(0,player.parryCooldown-dt);
                 player.drawCooldown=Math.max(0,player.drawCooldown-dt);
                 player.slashRecovery=Math.max(0,player.slashRecovery-dt);
+                player.crouchLock=Math.max(0,player.crouchLock-dt);
                 if(player.slashWindup>0){
                     player.slashWindup=Math.max(0,player.slashWindup-dt);
                     if(player.slashWindup===0){
-                        if(player.slamPending){
-                            player.slamPending=false;
-                            player.slamActive=.45;
-                            player.slashActive=.45;
-                            player.jumpHeight=0;
-                            player.jumpVelocity=0;
-                            noise(.12,.06);
-                            setEvent('Ground slam landed.','Shockwave reaching forward.');
-                        }else player.slashActive=.13;
+                        if(player.slamPending)player.jumpVelocity=Math.min(player.jumpVelocity,-1050);
+                        else player.slashActive=.13;
                     }
                 }else if(player.slashActive>0)player.slashActive=Math.max(0,player.slashActive-dt);
                 player.slamActive=Math.max(0,player.slamActive-dt);
@@ -428,19 +499,57 @@
                 if(player.drawing)player.drawTime+=dt;
                 let movement=player.humanMove;
                 if(player.ai){
-                    player.crouching=false;
                     movement=updateAI(player,enemy,dt);
-                }else player.crouching=keys.has(player.id===0?'s':'arrowdown');
+                    if(player.crouching)player.crouchInput=true;
+                    else releaseCrouch(player);
+                    player.crouching=player.crouchInput||player.crouchLock>0;
+                }else player.crouching=player.crouchInput||player.crouchLock>0;
                 if(player.stun>0)movement=0;
                 const speed=player.drawing?120:player.crouching?145:240;
-                player.x=Math.max(45,Math.min(W-45,player.x+movement*speed*dt));
-                if(movement)player.facing=movement>0?1:-1;
-                else player.facing=Math.sign(enemy.x-player.x)||player.facing;
-                if(player.jumpHeight>0||player.jumpVelocity>0){
-                    player.jumpHeight=Math.max(0,player.jumpHeight+player.jumpVelocity*dt);
-                    player.jumpVelocity-=1450*dt;
-                    if(player.jumpHeight===0)player.jumpVelocity=0;
+                let dashDistance=0;
+                if(player.slashDashTime>0){
+                    const dashDt=Math.min(dt,player.slashDashTime);
+                    player.slashDashTime=Math.max(0,player.slashDashTime-dt);
+                    if(player.stun<=0)dashDistance=player.facing*SLASH_DASH_SPEED*dashDt;
                 }
+                player.slashDashPreviousX=player.x;
+                if(!dashDistance&&movement)player.facing=movement>0?1:-1;
+                else if(!dashDistance)player.facing=Math.sign(enemy.x-player.x)||player.facing;
+                const displacement=dashDistance||movement*speed*dt;
+                player.x=Math.max(45,Math.min(W-45,player.x+displacement));
+                const platform=platformAt(player.x);
+                if(player.grounded&&player.floor===1&&(!platform||platform.broken))player.grounded=false;
+                if(!player.grounded){
+                    const previousHeight=player.jumpHeight;
+                    player.jumpHeight+=player.jumpVelocity*dt;
+                    player.jumpVelocity-=1450*dt;
+                    if(player.jumpVelocity<=0&&previousHeight>upperHeight&&player.jumpHeight<=upperHeight&&platform&&!platform.broken){
+                        player.jumpHeight=upperHeight;
+                        player.jumpVelocity=0;
+                        if(player.slamPending&&breakCardboard(platform)){
+                            player.floor=0;
+                            player.jumpVelocity=-80;
+                        }else{
+                            player.floor=1;
+                            player.grounded=true;
+                            if(player.slamPending)landSlam(player);
+                        }
+                    }else if(player.jumpHeight<=0){
+                        player.jumpHeight=0;
+                        player.jumpVelocity=0;
+                        player.floor=0;
+                        player.grounded=true;
+                        if(player.slamPending)landSlam(player);
+                    }
+                }
+            }
+
+            function landSlam(player) {
+                player.slamPending=false;
+                player.slamActive=.45;
+                player.slashActive=.45;
+                noise(.12,.06);
+                setEvent('Ground slam landed.','Shockwave reaching forward.');
             }
 
             function updateAI(player,enemy,dt) {
@@ -452,7 +561,7 @@
                 const incoming=arrows.some(arrow=>{
                     if(arrow.owner===player.id)return false;
                     const time=(player.x-arrow.x)/arrow.vx;
-                    return time>=0&&time<.32&&Math.abs(arrow.y-(floorY-67-player.jumpHeight))<36;
+                    return time>=0&&time<.32&&Math.abs(arrow.y+arrow.vy*time-(floorY-67-player.jumpHeight))<36;
                 });
                 if(incoming&&level!=='novice'){
                     if(level==='swordmaster')startJump(player);
@@ -461,18 +570,28 @@
                 player.aiDecision-=dt;
                 player.aiShotDelay-=dt;
                 player.aiParryDelay-=dt;
+                if(player.grounded&&enemy.floor!==player.floor&&absDistance>120&&!player.drawing&&player.aiDecision<=0){
+                    startJump(player);
+                    player.aiDecision=.8;
+                }
                 if(player.slamPending||player.slamActive>0)return 0;
                 if(level==='novice'){
                     if(player.aiShotDelay<=0&&player.arrows>0&&!player.drawing){startDraw(player);player.aiShotDelay=.52;}
                     if(player.drawing&&player.drawTime>=DRAW_SECONDS)releaseDraw(player);
                     if(absDistance>190)return direction;
-                    if(enemy.slashActive>0&&player.aiParryDelay<=0){startParry(player);player.aiParryDelay=.8;}
+                    if(enemy.slashActive>0&&player.aiObservedSlash!==enemy.slashSerial){
+                        player.aiObservedSlash=enemy.slashSerial;
+                        if(player.aiParryDelay<=0&&Math.random()<.12){startParry(player);player.aiParryDelay=.8;}
+                    }
                     if(player.slashCooldown<=0&&absDistance<80)startSlash(player);
                     return -direction*.2;
                 }
                 const enemyRecovery=enemy.stun>0||enemy.slashRecovery>.16||(enemy.parryCooldown>.3&&enemy.parryTime===0);
                 if(level==='skilled'){
-                    if(enemy.slashActive>0&&player.aiParryDelay<=0&&absDistance<110){startParry(player);player.aiParryDelay=1.1;}
+                    if(enemy.slashActive>0&&absDistance<110&&player.aiObservedSlash!==enemy.slashSerial){
+                        player.aiObservedSlash=enemy.slashSerial;
+                        if(player.aiParryDelay<=0&&Math.random()<.32){startParry(player);player.aiParryDelay=1.1;}
+                    }
                     if(player.arrows>0&&enemyRecovery&&!player.drawing&&player.drawCooldown<=0)startDraw(player);
                     if(player.drawing&&player.drawTime>=DRAW_SECONDS&&enemyRecovery)releaseDraw(player);
                     if(player.drawing&&player.drawTime>.85&&!enemyRecovery)cancelDraw(player,'AI held its shot.');
@@ -480,7 +599,10 @@
                     if(player.slashCooldown<=0)startSlash(player);
                     return 0;
                 }
-                if(enemy.slashActive>0&&absDistance<120&&player.aiParryDelay<=0){startParry(player);player.aiParryDelay=.85;}
+                if(enemy.slashActive>0&&absDistance<120&&player.aiObservedSlash!==enemy.slashSerial){
+                    player.aiObservedSlash=enemy.slashSerial;
+                    if(player.aiParryDelay<=0&&Math.random()<.68){startParry(player);player.aiParryDelay=.85;}
+                }
                 if(enemy.crouching&&absDistance>88&&absDistance<170&&player.jumpHeight===0&&player.jumpVelocity<=0&&!player.drawing)startJump(player);
                 if(player.jumpHeight>10&&player.slashCooldown<=0)startSlash(player);
                 if(absDistance<110){
@@ -509,13 +631,27 @@
                     arrow.trail.forEach(t=>t.life-=dt);
                     arrow.trail=arrow.trail.filter(t=>t.life>0);
                     const previous=arrow.x;
+                    const previousY=arrow.y;
                     arrow.x+=arrow.vx*dt;
+                    arrow.y+=arrow.vy*dt;
                     const target=players[1-arrow.owner];
                     const crossed=arrow.vx>0?previous<=target.x&&arrow.x>=target.x:previous>=target.x&&arrow.x<=target.x;
-                    const targetHeight=target.crouching?36:67;
-                    const targetY=target.y-targetHeight-target.jumpHeight;
+                    const targetY=floorY-target.jumpHeight-(target.crouching?36:67);
                     const hitRadius=target.crouching?15:24;
-                    if(crossed&&Math.abs(targetY-arrow.y)<hitRadius){
+                    const targetT=crossed?(target.x-previous)/(arrow.x-previous):Infinity;
+                    const targetArrowY=previousY+(arrow.y-previousY)*targetT;
+                    const platformCrossed=(previousY-upperFloorY)*(arrow.y-upperFloorY)<=0&&Math.abs(arrow.y-previousY)>.001;
+                    const platformT=platformCrossed?(upperFloorY-previousY)/(arrow.y-previousY):Infinity;
+                    const platformX=previous+(arrow.x-previous)*platformT;
+                    const hit=platformCrossed&&platformT>=0&&platformT<=1
+                        ?upperPlatforms.find(item=>item.type==='cardboard'&&!item.broken&&platformX>=item.start&&platformX<=item.end)
+                        :null;
+                    if(hit&&platformT<targetT){
+                        breakCardboard(hit);
+                        arrows.splice(index,1);
+                        continue;
+                    }
+                    if(crossed&&Math.abs(targetY-targetArrowY)<hitRadius){
                         if(target.parryTime>0)parryArrow(arrow,target);
                         else damagePlayer(target,'arrow');
                         arrows.splice(index,1);
@@ -535,22 +671,28 @@
                     if(attacker.slashActive<=0||attacker.slashHit)continue;
                     const defender=players[1-attacker.id];
                     const inFront=(defender.x-attacker.x)*attacker.facing>0;
-                    const reach=attacker.slamActive>0?(attacker.ai?220:170):82;
-                    const canReachHeight=attacker.slamActive>0||defender.jumpHeight<68;
-                    if(inFront&&canReachHeight&&Math.abs(defender.x-attacker.x)<reach){
+                    const isSlam=attacker.slamActive>0;
+                    const sameLevel=Math.abs(defender.jumpHeight-attacker.jumpHeight)<72;
+                    const dashCrossed=attacker.slashDashTime>0&&defender.x>=Math.min(attacker.slashDashPreviousX,attacker.x)-18&&defender.x<=Math.max(attacker.slashDashPreviousX,attacker.x)+18;
+                    const inReach=isSlam
+                        ?Math.abs(defender.x-attacker.x)<220
+                        :(inFront&&Math.abs(defender.x-attacker.x)<82&&defender.jumpHeight<68)||dashCrossed;
+                    if(inReach&&sameLevel){
                         attacker.slashHit=true;
-                        if(defender.parryTime>0){
+                        if(defender.parryTime>0&&!isSlam){
                             defender.parryPending=false;defender.parrySuccess=true;defender.parryTime=0;
                             attacker.stun=.48;
+                            attacker.slashDashTime=0;
                             noise(.1,.08);ping(1180,.045,'square',.065);ping(115,.2,'sine',.07);
                             if(attacker.drawing)cancelDraw(attacker,'Shield knocked the bow aside.');
                             setEvent('Sword parried.','Punish the recovery.');
-                        }else damagePlayer(defender,attacker.slamActive>0?'slam':'sword',defender.crouching?2:1);
+                        }else damagePlayer(defender,attacker.slamActive>0?'slam':'sword',defender.crouching||defender.crouchLock>0?2:1);
                     }
                 }
             }
 
             function update(dt) {
+                if(mode==='online'&&networkRole==='guest')return;
                 if(phase!=='round')return;
                 updatePlayer(players[0],players[1],dt);
                 if(phase!=='round')return;
@@ -561,10 +703,14 @@
                 for(const particle of particles){particle.x+=particle.vx*dt;particle.y+=particle.vy*dt;particle.vy+=580*dt;particle.life-=dt;}
                 particles=particles.filter(p=>p.life>0);
                 updateHud();
+                if(mode==='online'&&networkRole==='host'){
+                    networkSnapshotTimer+=dt;
+                    if(networkSnapshotTimer>=.05){networkSnapshotTimer=0;sendNetworkState();}
+                }
             }
 
-            function drawArrow(x,y,dir,broken=false) {
-                ctx.save();ctx.translate(x,y);ctx.scale(dir,1);
+            function drawArrow(x,y,dir,broken=false,angle=0) {
+                ctx.save();ctx.translate(x,y);ctx.scale(dir,1);ctx.rotate(angle);
                 ctx.strokeStyle=broken?'#87745c':'#efe7d1';ctx.lineWidth=3;
                 ctx.beginPath();ctx.moveTo(-2,0);ctx.lineTo(27,0);ctx.stroke();
                 ctx.fillStyle=broken?'#87745c':'#efe7d1';
@@ -582,7 +728,7 @@
                 const bob=player.stun>0?Math.sin(performance.now()*.035)*4:0;
                 const poseOffset=player.crouching?25:0;
                 ctx.fillStyle='rgba(8,12,12,.28)';
-                ctx.beginPath();ctx.ellipse(x,floorY-2,player.jumpHeight>0?22+player.jumpHeight*.05:20,5,0,0,Math.PI*2);ctx.fill();
+                ctx.beginPath();ctx.ellipse(x,(player.floor===1?upperFloorY:floorY)-2,player.grounded?20:22,5,0,0,Math.PI*2);ctx.fill();
                 ctx.save();ctx.translate(x,y+bob);ctx.scale(facing,1);
                 ctx.globalAlpha=player.stun>0?.68:1;
                 ctx.fillStyle=dark;
@@ -595,7 +741,7 @@
                 if(player.drawing){
                     ctx.strokeStyle='#d9c99e';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(31,-126+poseOffset);ctx.quadraticCurveTo(53,-103+poseOffset,31,-79+poseOffset);ctx.stroke();
                     ctx.strokeStyle='#ece4d3';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(31,-126+poseOffset);ctx.lineTo(31,-79+poseOffset);ctx.stroke();
-                    drawArrow(30,-101+poseOffset,1);
+                    ctx.save();ctx.translate(30,-101+poseOffset);ctx.rotate(player.aimVertical*.5);drawArrow(0,0,1);ctx.restore();
                     ctx.fillStyle='#1b252b';ctx.fillRect(-22,-151+poseOffset,44,4);
                     ctx.fillStyle='#efc46e';ctx.fillRect(-22,-151+poseOffset,44*Math.min(1,player.drawTime/DRAW_SECONDS),4);
                 }else if(player.slashActive>0||player.slashWindup>0){
@@ -623,6 +769,20 @@
                 ctx.fillStyle='rgba(239,196,110,.08)';ctx.beginPath();ctx.arc(500,110,65,0,Math.PI*2);ctx.fill();
                 ctx.fillStyle='#202e30';ctx.fillRect(0,0,W,24);
                 for(let i=0;i<12;i++){const x=i*92+20;ctx.fillStyle=i%2?'#273538':'#303c3b';ctx.fillRect(x,38,7,210+Math.sin(i*2)*28);}
+                ctx.fillStyle='rgba(226,216,179,.55)';ctx.font='700 10px ui-monospace,monospace';ctx.fillText('UPPER WALKWAY',38,upperFloorY-12);
+                upperPlatforms.forEach(platform=>{
+                    if(platform.broken)return;
+                    const cardboard=platform.type==='cardboard';
+                    ctx.fillStyle=cardboard?'#806741':'#4c5751';
+                    ctx.fillRect(platform.start,upperFloorY,platform.end-platform.start,11);
+                    ctx.fillStyle=cardboard?'#c3a16a':'#879185';
+                    ctx.fillRect(platform.start,upperFloorY,platform.end-platform.start,3);
+                    if(cardboard){
+                        ctx.strokeStyle='rgba(42,35,24,.55)';ctx.lineWidth=2;
+                        for(let x=platform.start+18;x<platform.end;x+=25){ctx.beginPath();ctx.moveTo(x,upperFloorY+2);ctx.lineTo(x,upperFloorY+10);ctx.stroke();}
+                    }
+                    ctx.fillStyle='rgba(10,16,16,.25)';ctx.fillRect(platform.start+9,upperFloorY+11,platform.end-platform.start-18,7);
+                });
                 ctx.fillStyle='#4b4a3e';ctx.fillRect(0,floorY,W,H-floorY);
                 ctx.fillStyle='#756f58';ctx.fillRect(0,floorY,W,5);
                 ctx.strokeStyle='rgba(224,208,161,.08)';ctx.lineWidth=1;
@@ -643,7 +803,10 @@
             function drawProjectiles() {
                 arrows.forEach(arrow=>{
                     arrow.trail.forEach(t=>{ctx.globalAlpha=Math.max(0,t.life/.12)*.35;ctx.strokeStyle='#fff0c8';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(t.x,t.y);ctx.lineTo(t.x-arrow.vx*.008,t.y);ctx.stroke();});
-                    ctx.globalAlpha=1;drawArrow(arrow.x,arrow.y,Math.sign(arrow.vx));
+                    ctx.globalAlpha=1;
+                    const direction=Math.sign(arrow.vx);
+                    const angle=Math.atan2(arrow.vy,arrow.vx);
+                    drawArrow(arrow.x,arrow.y,direction,false,direction>0?angle:Math.PI-angle);
                 });
                 particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life/.7);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,4,3);});ctx.globalAlpha=1;
             }
@@ -681,13 +844,221 @@
 
             function setMode(next) {
                 if(phase==='round')return;
+                if(mode==='online'&&next!=='online')closeOnline();
                 mode=next;
                 document.getElementById('twoMode').setAttribute('aria-pressed',String(mode==='two'));
                 document.getElementById('aiMode').setAttribute('aria-pressed',String(mode==='ai'));
+                document.getElementById('onlineMode').setAttribute('aria-pressed',String(mode==='online'));
                 document.getElementById('difficultyField').hidden=mode!=='ai';
-                document.getElementById('playerTwoRules').classList.toggle('hidden',mode==='ai');
-                document.getElementById('touchTwo').classList.toggle('hidden',mode==='ai');
-                document.getElementById('playerTwoName').textContent=mode==='ai'?'RIVAL AI':'PLAYER TWO';
+                document.getElementById('onlineField').hidden=mode!=='online';
+                const guest=mode==='online'&&networkRole==='guest';
+                document.getElementById('playerOneRules').hidden=guest;
+                document.getElementById('playerTwoRules').hidden=mode==='ai'||(mode==='online'&&!guest);
+                document.getElementById('touchOne').hidden=guest;
+                document.getElementById('touchTwo').hidden=mode==='ai'||(mode==='online'&&!guest);
+                document.getElementById('playerTwoName').textContent=mode==='ai'?'RIVAL AI':mode==='online'?'ONLINE PLAYER':'PLAYER TWO';
+                document.getElementById('pauseButton').disabled=phase!=='round'||mode==='online';
+                syncOnlineOverlay();
+            }
+
+            function setOnlineStatus(message) {
+                document.getElementById('onlineStatus').textContent=message;
+            }
+
+            function syncOnlineOverlay() {
+                if(mode!=='online'){
+                    overlayAction.disabled=false;
+                    return;
+                }
+                const connected=Boolean(networkConnection&&networkConnection.open);
+                const host=networkRole==='host';
+                overlayAction.disabled=!connected||!host;
+                if(!connected)overlayAction.textContent=networkRole?'Waiting for opponent…':'Host or join a room';
+                else if(host)overlayAction.textContent=phase==='menu'?'Start online match':scores.some(score=>score>=3)?'Rematch':'Next round';
+                else overlayAction.textContent='Waiting for host…';
+            }
+
+            function localPlayerId() {
+                return networkRole==='guest'?1:0;
+            }
+
+            function sendNetwork(message) {
+                if(networkConnection&&networkConnection.open)networkConnection.send(message);
+            }
+
+            function loadPeerLibrary() {
+                if(window.Peer)return Promise.resolve();
+                if(networkScriptPromise)return networkScriptPromise;
+                networkScriptPromise=new Promise((resolve,reject)=>{
+                    const script=document.createElement('script');
+                    script.src='https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js';
+                    script.onload=resolve;
+                    script.onerror=()=>reject(new Error('Could not load the online connection library.'));
+                    document.head.append(script);
+                });
+                return networkScriptPromise;
+            }
+
+            function randomRoomCode() {
+                const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                const values=new Uint8Array(6);
+                crypto.getRandomValues(values);
+                return Array.from(values,value=>alphabet[value%alphabet.length]).join('');
+            }
+
+            function closeOnline() {
+                const connection=networkConnection;
+                const peer=networkPeer;
+                networkConnection=null;
+                networkPeer=null;
+                networkRole=null;
+                networkRoomCode='';
+                if(connection)connection.close();
+                if(peer&&!peer.destroyed)peer.destroy();
+                document.getElementById('roomCode').readOnly=false;
+                document.getElementById('roomShare').hidden=true;
+            }
+
+            function handlePeerError(error) {
+                const message=error&&error.type==='unavailable-id'
+                    ?'That room code is already in use. Host a new room.'
+                    :error&&error.type==='peer-unavailable'
+                        ?'Room not found. Check the code and try again.'
+                        :'Connection failed. Check the internet and try again.';
+                setOnlineStatus(message);
+                syncOnlineOverlay();
+            }
+
+            function attachNetworkConnection(connection,role) {
+                networkConnection=connection;
+                networkRole=role;
+                setMode('online');
+                connection.on('open',()=>{
+                    setOnlineStatus(role==='host'?'Opponent connected. Start when ready.':'Connected. Waiting for the host to start.');
+                    syncOnlineOverlay();
+                    if(role==='host')sendNetworkState();
+                    else sendNetwork({type:'hello'});
+                });
+                connection.on('data',handleNetworkMessage);
+                connection.on('close',()=>{
+                    if(networkConnection!==connection)return;
+                    if(role==='host')clearPlayerInputs(1);
+                    networkConnection=null;
+                    setOnlineStatus('Opponent disconnected. Rejoin with a room code.');
+                    syncOnlineOverlay();
+                });
+                connection.on('error',handlePeerError);
+            }
+
+            async function hostOnline() {
+                if(!window.isSecureContext){setOnlineStatus('Online play requires HTTPS or localhost.');return;}
+                closeOnline();
+                mode='online';
+                networkRole='host';
+                networkRoomCode=randomRoomCode();
+                const roomInput=document.getElementById('roomCode');
+                roomInput.value=networkRoomCode;
+                roomInput.readOnly=true;
+                document.getElementById('roomShare').hidden=false;
+                setMode('online');
+                setOnlineStatus('Connecting to the match service…');
+                syncOnlineOverlay();
+                try{
+                    await loadPeerLibrary();
+                    networkPeer=new window.Peer(`five-arrows-${networkRoomCode.toLowerCase()}`);
+                    networkPeer.on('open',()=>setOnlineStatus(`Room ${networkRoomCode} is ready. Share the code with your opponent.`));
+                    networkPeer.on('connection',connection=>{
+                        if(networkConnection&&networkConnection.open){connection.close();return;}
+                        attachNetworkConnection(connection,'host');
+                    });
+                    networkPeer.on('error',handlePeerError);
+                }catch(error){setOnlineStatus(error.message);}
+            }
+
+            async function joinOnline() {
+                if(!window.isSecureContext){setOnlineStatus('Online play requires HTTPS or localhost.');return;}
+                const code=document.getElementById('roomCode').value.trim().toUpperCase();
+                if(!/^[A-HJ-NP-Z2-9]{6}$/.test(code)){setOnlineStatus('Enter the six-character room code.');return;}
+                closeOnline();
+                mode='online';
+                networkRole='guest';
+                networkRoomCode=code;
+                document.getElementById('roomCode').value=code;
+                document.getElementById('roomCode').readOnly=false;
+                document.getElementById('roomShare').hidden=true;
+                setMode('online');
+                setOnlineStatus('Connecting to the room…');
+                syncOnlineOverlay();
+                try{
+                    await loadPeerLibrary();
+                    networkPeer=new window.Peer();
+                    networkPeer.on('open',()=>{
+                        const connection=networkPeer.connect(`five-arrows-${code.toLowerCase()}`,{serialization:'json',reliable:true});
+                        attachNetworkConnection(connection,'guest');
+                    });
+                    networkPeer.on('error',handlePeerError);
+                }catch(error){setOnlineStatus(error.message);}
+            }
+
+            function createNetworkState() {
+                return {
+                    type:'state',phase,round,scores:[...scores],players:players.map(player=>({...player})),
+                    arrows:arrows.map(arrow=>({...arrow,trail:arrow.trail.map(point=>({...point}))})),
+                    stuckArrows:stuckArrows.map(arrow=>({...arrow})),particles:particles.map(particle=>({...particle})),
+                    cardboard:upperPlatforms.map(platform=>Boolean(platform.broken)),
+                    event:document.getElementById('event').textContent,result:networkResult
+                };
+            }
+
+            function sendNetworkState() {
+                if(mode==='online'&&networkRole==='host'&&networkConnection&&networkConnection.open)sendNetwork(createNetworkState());
+            }
+
+            function showRemoteResult(result) {
+                if(!result)return;
+                const winner=result.winnerId===0?'Player One':'Player Two';
+                const matchOver=scores[result.winnerId]>=3;
+                if(matchOver)showOverlay('Match decided',`${winner} takes the set.`,`${scores[0]} — ${scores[1]}. ${result.reason}`,'Waiting for host…',()=>{});
+                else showOverlay(`Round ${round} decided`,`${winner} survives.`,`${scores[0]} — ${scores[1]}. ${result.reason}`,'Waiting for host…',()=>{});
+            }
+
+            function applyNetworkState(state) {
+                if(networkRole!=='guest')return;
+                const previousPhase=phase;
+                phase=state.phase;
+                round=state.round;
+                scores[0]=state.scores[0];scores[1]=state.scores[1];
+                players=state.players;
+                arrows=state.arrows;
+                stuckArrows=state.stuckArrows;
+                particles=state.particles;
+                upperPlatforms.forEach((platform,index)=>{platform.broken=state.cardboard[index];});
+                networkResult=state.result;
+                if(state.event)setEvent(state.event);
+                document.getElementById('roundLabel').textContent=`ROUND ${round}`;
+                document.getElementById('pauseButton').disabled=true;
+                if(phase==='round')overlay.hidden=true;
+                else if(phase==='result'&&previousPhase!=='result')showRemoteResult(networkResult);
+                updateHud();
+                draw();
+            }
+
+            function applyRemoteInput(message) {
+                const remoteId=networkRole==='host'?1:0;
+                if(message.playerId!==remoteId||keyPlayer(message.key)!==message.playerId)return;
+                applyPlayerKey(message.playerId,message.key,message.down);
+            }
+
+            function handleNetworkMessage(message) {
+                if(!message||typeof message!=='object')return;
+                if(message.type==='hello'&&networkRole==='host')sendNetworkState();
+                else if(message.type==='input')applyRemoteInput(message);
+                else if(message.type==='reset'&&networkRole==='host'&&message.playerId===1)clearPlayerInputs(1);
+                else if(message.type==='state')applyNetworkState(message);
+                else if(message.type==='action'&&networkRole==='guest'){
+                    if(message.action==='start'||message.action==='rematch')startMatch();
+                    else if(message.action==='next'){round++;beginRound();}
+                }
             }
 
             function keyPlayer(key) {
@@ -700,6 +1071,45 @@
                 return ({a:'left',d:'right',arrowleft:'left',arrowright:'right',w:'jump',arrowup:'jump',s:'crouch',arrowdown:'crouch',f:'slash','.':'slash',g:'parry','/':'parry',r:'bow',',':'bow'})[key]||'';
             }
 
+            function applyPlayerKey(id,key,down) {
+                const player=players[id];
+                if(!player||phase!=='round')return;
+                if(['a','d','arrowleft','arrowright'].includes(key)){
+                    if(down)keys.add(key);else keys.delete(key);
+                    player.humanMove=moveFor(id);
+                    return;
+                }
+                if(!down){
+                    keys.delete(key);
+                    if(key==='s'||key==='arrowdown')releaseCrouch(player);
+                    if(key==='r'||key===',')releaseDraw(player);
+                    return;
+                }
+                if(player.drawing&&['w','arrowup','s','arrowdown'].includes(key)){
+                    player.aimVertical=key==='w'||key==='arrowup'?-1:1;
+                    return;
+                }
+                if(key==='s'||key==='arrowdown'){
+                    keys.add(key);player.crouchInput=true;player.crouching=true;
+                    return;
+                }
+                const action=keyAction(key);
+                if(action==='slash')startSlash(player);
+                if(action==='parry')startParry(player);
+                if(action==='jump')startJump(player);
+                if(action==='bow')startDraw(player);
+            }
+
+            function clearPlayerInputs(id) {
+                const player=players[id];
+                if(!player)return;
+                const playerKeys=id===0?['a','d','w','s']:['arrowleft','arrowright','arrowup','arrowdown'];
+                playerKeys.forEach(key=>keys.delete(key));
+                player.humanMove=0;
+                releaseCrouch(player);
+                if(player.drawing)cancelDraw(player);
+            }
+
             function handleDown(event) {
                 const key=event.key.toLowerCase();
                 if(['arrowleft','arrowright','arrowup','arrowdown'].includes(key))event.preventDefault();
@@ -708,15 +1118,10 @@
                 if(key==='escape'||key==='p'){togglePause();return;}
                 if(phase!=='round')return;
                 const id=keyPlayer(key);if(id<0)return;
-                const player=players[id];
-                if(['a','d','arrowleft','arrowright'].includes(key)){keys.add(key);player.humanMove=moveFor(id);return;}
-                if(key==='s'||key==='arrowdown'){keys.add(key);player.crouching=true;return;}
+                if(mode==='online'&&id!==localPlayerId())return;
                 if(event.repeat)return;
-                const action=keyAction(key);
-                if(action==='slash')startSlash(player);
-                if(action==='parry')startParry(player);
-                if(action==='jump')startJump(player);
-                if(action==='bow')startDraw(player);
+                applyPlayerKey(id,key,true);
+                if(mode==='online')sendNetwork({type:'input',playerId:id,key,down:true});
             }
 
             function moveFor(id) {
@@ -726,33 +1131,27 @@
 
             function handleUp(event) {
                 const key=event.key.toLowerCase();
-                keys.delete(key);
                 const id=keyPlayer(key);if(id<0||!players[id])return;
-                if(['a','d','arrowleft','arrowright'].includes(key))players[id].humanMove=moveFor(id);
-                if(key==='s'||key==='arrowdown')players[id].crouching=false;
-                if(key==='r'||key===',')releaseDraw(players[id]);
+                if(mode==='online'&&id!==localPlayerId())return;
+                applyPlayerKey(id,key,false);
+                if(mode==='online')sendNetwork({type:'input',playerId:id,key,down:false});
             }
 
             function touchAction(button,begin) {
                 const id=Number(button.dataset.player),action=button.dataset.action,player=players[id];
                 if(!player||player.ai||phase!=='round')return;
-                if(action==='left'||action==='right'){
-                    const key=id===0?(action==='left'?'a':'d'):(action==='left'?'arrowleft':'arrowright');
-                    if(begin)keys.add(key);else keys.delete(key);
-                    player.humanMove=moveFor(id);
-                }else if(begin){
-                    if(action==='crouch')player.crouching=true;
-                    if(action==='jump')startJump(player);
-                    if(action==='slash')startSlash(player);
-                    if(action==='parry')startParry(player);
-                    if(action==='bow')startDraw(player);
-                }else{
-                    if(action==='crouch')player.crouching=false;
-                    if(action==='bow')releaseDraw(player);
-                }
+                if(mode==='online'&&id!==localPlayerId())return;
+                const keyByAction=id===0
+                    ?{left:'a',right:'d',crouch:'s',jump:'w',slash:'f',parry:'g',bow:'r'}
+                    :{left:'arrowleft',right:'arrowright',crouch:'arrowdown',jump:'arrowup',slash:'.',parry:'/',bow:','};
+                const key=keyByAction[action];
+                if(!key)return;
+                applyPlayerKey(id,key,begin);
+                if(mode==='online')sendNetwork({type:'input',playerId:id,key,down:begin});
             }
 
             function togglePause() {
+                if(mode==='online')return;
                 if(phase==='round'){
                     phase='paused';
                     showOverlay('Match paused','The arrows can wait.','Resume when ready.','Resume',()=>{phase='round';overlay.hidden=true;canvas.focus({preventScroll:true});});
@@ -765,7 +1164,23 @@
 
             document.getElementById('twoMode').addEventListener('click',()=>setMode('two'));
             document.getElementById('aiMode').addEventListener('click',()=>setMode('ai'));
-            overlayAction.addEventListener('click',()=>nextOverlayAction());
+            document.getElementById('onlineMode').addEventListener('click',()=>setMode('online'));
+            document.getElementById('hostRoom').addEventListener('click',hostOnline);
+            document.getElementById('joinRoom').addEventListener('click',joinOnline);
+            document.getElementById('copyRoom').addEventListener('click',async()=>{
+                try{await navigator.clipboard.writeText(networkRoomCode);setOnlineStatus('Room code copied. Send it to your opponent.');}
+                catch{setOnlineStatus(`Room code: ${networkRoomCode}. Copy it to your opponent.`);}
+            });
+            document.getElementById('roomCode').addEventListener('input',event=>{
+                event.currentTarget.value=event.currentTarget.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g,'').slice(0,6);
+            });
+            overlayAction.addEventListener('click',()=>{
+                if(mode!=='online'){nextOverlayAction();return;}
+                if(networkRole!=='host'||!networkConnection||!networkConnection.open)return;
+                const action=phase==='menu'?'start':scores.some(score=>score>=3)?'rematch':'next';
+                nextOverlayAction();
+                sendNetwork({type:'action',action});
+            });
             document.getElementById('pauseButton').addEventListener('click',togglePause);
             document.getElementById('soundButton').addEventListener('click',(event)=>{
                 audioOn=!audioOn;event.currentTarget.textContent=audioOn?'Audio on':'Audio off';event.currentTarget.setAttribute('aria-pressed',String(audioOn));
@@ -773,7 +1188,11 @@
             });
             window.addEventListener('keydown',handleDown);
             window.addEventListener('keyup',handleUp);
-            window.addEventListener('blur',()=>keys.clear());
+            window.addEventListener('blur',()=>{
+                const id=localPlayerId();
+                clearPlayerInputs(id);
+                if(mode==='online')sendNetwork({type:'reset',playerId:id});
+            });
             canvas.addEventListener('pointerdown',()=>canvas.focus());
             document.querySelectorAll('.touch-buttons button').forEach(button=>{
                 button.addEventListener('pointerdown',event=>{event.preventDefault();button.setPointerCapture(event.pointerId);touchAction(button,true);});
