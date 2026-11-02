@@ -12,7 +12,7 @@
         :root { color-scheme:dark; --page:#10131c; --panel:#191f29; --panel2:#222b35; --line:#36414d; --ink:#eef2f4; --muted:#9da9b2; --mint:#72e0cb; --red:#ff836d; --gold:#efc46e; font-family:"Avenir Next",Avenir,"Trebuchet MS",sans-serif; background:var(--page); color:var(--ink); }
         * { box-sizing:border-box; }
         [hidden] { display:none !important; }
-        body { min-width:320px; min-height:100vh; margin:0; background:radial-gradient(ellipse at 50% 0,#263139 0,#10131c 58%); }
+        body { min-width:0; min-height:100vh; margin:0; background:radial-gradient(ellipse at 50% 0,#263139 0,#10131c 58%); }
         button,select { font:inherit; }
         button { min-height:36px; padding:7px 11px; border:1px solid var(--line); border-radius:4px; background:var(--panel2); color:var(--ink); font-weight:750; cursor:pointer; }
         button:hover:not(:disabled) { border-color:var(--mint); }
@@ -50,9 +50,9 @@
         .versus { color:var(--muted); font:800 .58rem ui-monospace,monospace; letter-spacing:.16em; }
         .canvas-shell { position:relative; overflow:hidden; border:1px solid var(--line); background:#101a20; line-height:0; }
         #duelCanvas { display:block; width:100%; aspect-ratio: 16 / 8.2; touch-action:none; }
-        .overlay { position:absolute; inset:0; z-index:4; display:grid; place-items:center; padding:18px; background:rgba(9,13,17,.74); backdrop-filter:blur(4px); line-height:1.4; }
+        .overlay { position:fixed; inset:0; z-index:20; display:grid; place-items:center; overflow-y:auto; padding:14px; background:rgba(9,13,17,.82); backdrop-filter:blur(4px); line-height:1.4; }
         .overlay[hidden] { display:none; }
-        .overlay-panel { width:min(100%,480px); padding:25px; border:1px solid #536066; background:rgba(23,30,35,.97); }
+        .overlay-panel { width:min(100%,480px); max-height:calc(100vh - 28px); max-height:calc(100dvh - 28px); overflow-y:auto; overscroll-behavior:contain; padding:25px; border:1px solid #536066; background:rgba(23,30,35,.97); }
         .kicker { color:var(--gold); font:800 .63rem ui-monospace,monospace; letter-spacing:.14em; text-transform:uppercase; }
         .overlay-panel h2 { margin:10px 0; font-size:clamp(1.6rem,3vw,2.4rem); line-height:1.04; }
         .overlay-panel p { margin:0; color:#b5c0c3; font-size:.83rem; line-height:1.55; }
@@ -64,9 +64,9 @@
         select { width:min(100%,240px); min-height:36px; padding:7px 9px; border:1px solid var(--line); border-radius:4px; background:var(--panel); color:var(--ink); }
         .online-field { display:grid; gap:7px; margin-top:12px; }
         .online-field label { color:var(--muted); font-size:.68rem; font-weight:750; }
-        .room-controls { display:grid; grid-template-columns:1fr minmax(84px,.8fr) 1fr; gap:5px; }
+        .room-controls { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; }
         .room-controls button { min-width:0; padding-inline:6px; font-size:.68rem; }
-        .room-controls input { width:100%; min-width:0; min-height:36px; padding:6px 8px; border:1px solid var(--line); border-radius:4px; background:var(--page); color:var(--ink); font:800 .76rem ui-monospace,monospace; text-transform:uppercase; }
+        .room-controls textarea { width:100%; min-width:0; min-height:92px; grid-column:1 / -1; padding:8px; resize:vertical; border:1px solid var(--line); border-radius:4px; background:var(--page); color:var(--ink); font:600 .64rem/1.4 ui-monospace,monospace; overflow-wrap:anywhere; }
         .room-share { display:flex; gap:6px; }
         .room-share button { flex:1; }
         .online-status,.online-note { margin:0; color:var(--muted); font-size:.65rem; line-height:1.4; }
@@ -91,15 +91,23 @@
         .touch-player { padding:9px; border:1px solid var(--line); background:var(--panel); }
         .touch-player[hidden] { display:none !important; }
         .touch-title { margin-bottom:7px; color:var(--muted); font-size:.6rem; font-weight:850; letter-spacing:.1em; text-transform:uppercase; }
-        .touch-buttons { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:5px; }
-        .touch-buttons button { min-width:0; min-height:42px; padding:5px 2px; font-size:.68rem; touch-action:none; user-select:none; -webkit-user-select:none; }
+        .touch-controls { display:grid; grid-template-columns:minmax(112px,34%) minmax(0,1fr); align-items:center; gap:12px; }
+        .virtual-stick { width:min(100%,136px); aspect-ratio:1; position:relative; display:grid; place-items:center; touch-action:none; user-select:none; -webkit-user-select:none; }
+        .stick-base { width:86%; aspect-ratio:1; position:relative; display:grid; place-items:center; border:1px solid #61716f; border-radius:50%; background:radial-gradient(circle,#26363a 0,#192529 68%,#11191e 69%); box-shadow:inset 0 0 0 8px rgba(114,224,203,.045),0 5px 16px rgba(0,0,0,.24); }
+        .stick-base:before,.stick-base:after { position:absolute; content:""; background:rgba(174,194,190,.16); }
+        .stick-base:before { width:1px; height:62%; }
+        .stick-base:after { width:62%; height:1px; }
+        .stick-knob { width:40%; aspect-ratio:1; z-index:1; border:1px solid #90c8bd; border-radius:50%; background:radial-gradient(circle at 35% 30%,#607d79,#314b49 70%); box-shadow:0 3px 8px rgba(0,0,0,.38); transform:translate(var(--stick-x,0),0); pointer-events:none; }
+        .stick-label { position:absolute; bottom:0; color:var(--muted); font:700 .54rem ui-monospace,monospace; letter-spacing:.08em; }
+        .touch-buttons { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+        .touch-buttons button { min-width:0; min-height:48px; padding:6px 3px; font-size:.68rem; touch-action:none; user-select:none; -webkit-user-select:none; }
         .touch-buttons button[data-action="bow"] { color:var(--gold); border-color:#766849; }
         .touch-buttons button[data-action="parry"] { color:var(--mint); }
         .mobile-note { margin:7px 0 0; color:var(--muted); font-size:.61rem; }
         .hidden { display:none !important; }
         @media(max-width:980px) { .match-layout { grid-template-columns:minmax(0,1fr) 220px; gap:9px; } .section { padding:10px; } }
-        @media(max-width:760px) { main { width:min(100% - 20px,1320px); } .match-layout { grid-template-columns:1fr; } .side { grid-template-columns:repeat(2,minmax(0,1fr)); } .touch-area { display:grid; gap:7px; } }
-        @media(max-width:480px) { header { min-height:54px; padding-inline:10px; } .back-link { font-size:.66rem; } .brand { gap:8px; } .brand-mark { width:23px; height:23px; } h1 { font-size:.8rem; } .match-tag { font-size:.54rem; } main { width:min(100% - 12px,1320px); padding-top:7px; } .scorebar { min-height:60px; gap:5px; padding:7px; } .fighter-name { font-size:.55rem; } .health i { width:14px; height:4px; } .quiver { gap:2px; } .quiver-arrow { width:16px; font-size:.7rem; } .quiver-label { font-size:.5rem; } .side { gap:7px; } .section { padding:9px; } .rules { font-size:.61rem; } .touch-buttons { grid-template-columns:repeat(4,minmax(0,1fr)); } .touch-buttons button { min-height:48px; font-size:.68rem; } .overlay-panel { padding:17px; } .room-controls { grid-template-columns:1fr 1fr; } .room-controls input { grid-column:1 / -1; grid-row:1; } }
+        @media(max-width:760px) { main { width:min(100% - 20px,1320px); } .match-layout { grid-template-columns:1fr; } .arena { order:1; } .touch-area { order:2; display:grid; gap:7px; } .side { order:3; grid-template-columns:repeat(2,minmax(0,1fr)); } }
+        @media(max-width:480px) { header { min-height:54px; padding-inline:10px; } .back-link { font-size:.66rem; } .brand { gap:8px; } .brand-mark { width:23px; height:23px; } h1 { font-size:.8rem; } .match-tag { font-size:.54rem; } main { width:min(100% - 12px,1320px); padding-top:7px; } .scorebar { min-height:60px; gap:5px; padding:7px; } .fighter-name { font-size:.55rem; } .health i { width:14px; height:4px; } .quiver { gap:2px; } .quiver-arrow { width:16px; font-size:.7rem; } .quiver-label { font-size:.5rem; } .side { gap:7px; } .section { padding:9px; } .rules { font-size:.61rem; } .touch-controls { grid-template-columns:minmax(96px,31%) minmax(0,1fr); gap:8px; } .touch-buttons { gap:5px; } .touch-buttons button { min-height:48px; font-size:.66rem; } .virtual-stick { max-width:118px; } .overlay-panel { padding:17px; } }
         @media(prefers-reduced-motion:reduce) { *,*::before,*::after { transition-duration:.01ms !important; } }
     </style>
 </head>
@@ -126,11 +134,11 @@
                             <div class="mode-row"><button id="twoMode" type="button" aria-pressed="true">Two player</button><button id="aiMode" type="button" aria-pressed="false">Vs AI</button><button id="onlineMode" type="button" aria-pressed="false">Online</button></div>
                             <div class="difficulty-field" id="difficultyField" hidden><label for="difficulty">Opponent style</label><select id="difficulty"><option value="novice">Novice · panic shots</option><option value="skilled" selected>Skilled · punishes recovery</option><option value="swordmaster">Swordmaster · holds the threat</option></select></div>
                             <div class="online-field" id="onlineField" hidden>
-                                <label for="roomCode">Room code</label>
-                                <div class="room-controls"><button id="hostRoom" type="button">Host room</button><input id="roomCode" type="text" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="6-CHAR CODE" aria-label="Six character room code"><button id="joinRoom" type="button">Join</button></div>
-                                <div class="room-share" id="roomShare" hidden><button id="copyRoom" type="button">Copy room code</button></div>
+                                <label for="signalData">Invite / answer code</label>
+                                <div class="room-controls"><textarea id="signalData" rows="4" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Create an invite, or paste your opponent’s code" aria-label="WebRTC invite or answer code"></textarea><button id="hostRoom" type="button">Create invite</button><button id="joinRoom" type="button">Connect / finish</button></div>
+                                <div class="room-share" id="roomShare" hidden><button id="copyRoom" type="button">Copy code</button></div>
                                 <p class="online-status" id="onlineStatus" aria-live="polite">Host a room or enter a friend’s code.</p>
-                                <p class="online-note">Internet required. Open this game over HTTPS on both devices.</p>
+                                <p class="online-note">Share the invite, then the answer, between devices. HTTPS required; some networks block direct connections.</p>
                             </div>
                             <div class="overlay-actions"><button class="primary" id="overlayAction" type="button">Enter the ring</button></div>
                         </div>
@@ -150,8 +158,8 @@
                 <section class="section"><h2>Round rules</h2><div class="rules"><div>Five arrows each. No refills.</div><div>Draw for 300 ms; movement slows while nocking.</div><div>A close slash interrupts a draw.</div><div>Parry arrows cleanly, or lose health on a whiff.</div></div><p class="fineprint">While drawing, W / ↑ aims up and S / ↓ aims down. Jump between levels; arrows and slams break cardboard.</p><button class="sound-button" id="soundButton" type="button" aria-pressed="true">Audio on</button></section>
             </aside>
             <section class="touch-area" aria-label="Touch controls">
-                <div class="touch-player" id="touchOne"><div class="touch-title">Player One</div><div class="touch-buttons"><button type="button" data-player="0" data-action="left">&#9664;</button><button type="button" data-player="0" data-action="right">&#9654;</button><button type="button" data-player="0" data-action="crouch">Duck</button><button type="button" data-player="0" data-action="jump">Jump</button><button type="button" data-player="0" data-action="slash">Slash</button><button type="button" data-player="0" data-action="parry">Shield</button><button type="button" data-player="0" data-action="bow">&#10142; <span class="touch-arrows">5</span></button></div><p class="mobile-note">Hold Bow to draw; release to shoot. Duck / Jump aim while drawing.</p></div>
-                <div class="touch-player" id="touchTwo"><div class="touch-title">Player Two</div><div class="touch-buttons"><button type="button" data-player="1" data-action="left">&#9664;</button><button type="button" data-player="1" data-action="right">&#9654;</button><button type="button" data-player="1" data-action="crouch">Duck</button><button type="button" data-player="1" data-action="jump">Jump</button><button type="button" data-player="1" data-action="slash">Slash</button><button type="button" data-player="1" data-action="parry">Shield</button><button type="button" data-player="1" data-action="bow">&#10142; <span class="touch-arrows">5</span></button></div><p class="mobile-note">Hold Bow to draw; release to shoot. Duck / Jump aim while drawing.</p></div>
+                <div class="touch-player" id="touchOne"><div class="touch-title">Player One</div><div class="touch-controls"><div class="virtual-stick" data-player="0" role="slider" tabindex="0" aria-label="Player One movement"><div class="stick-base"><span class="stick-knob"></span></div><span class="stick-label">MOVE</span></div><div class="touch-buttons"><button type="button" data-player="0" data-action="crouch">Duck</button><button type="button" data-player="0" data-action="jump">Jump</button><button type="button" data-player="0" data-action="slash">Slash</button><button type="button" data-player="0" data-action="parry">Shield</button><button type="button" data-player="0" data-action="bow">&#10142; <span class="touch-arrows">5</span></button></div></div><p class="mobile-note">Drag the stick to move. Hold Bow to draw; release to shoot.</p></div>
+                <div class="touch-player" id="touchTwo"><div class="touch-title">Player Two</div><div class="touch-controls"><div class="virtual-stick" data-player="1" role="slider" tabindex="0" aria-label="Player Two movement"><div class="stick-base"><span class="stick-knob"></span></div><span class="stick-label">MOVE</span></div><div class="touch-buttons"><button type="button" data-player="1" data-action="crouch">Duck</button><button type="button" data-player="1" data-action="jump">Jump</button><button type="button" data-player="1" data-action="slash">Slash</button><button type="button" data-player="1" data-action="parry">Shield</button><button type="button" data-player="1" data-action="bow">&#10142; <span class="touch-arrows">5</span></button></div></div><p class="mobile-note">Drag the stick to move. Hold Bow to draw; release to shoot.</p></div>
             </section>
         </div>
     </main>
@@ -179,11 +187,9 @@
             let stuckArrows = [];
             let particles = [];
             let mode = new URLSearchParams(location.search).get('mode') === 'ai' ? 'ai' : 'two';
-            let networkPeer = null;
+            let networkRtc = null;
             let networkConnection = null;
             let networkRole = null;
-            let networkRoomCode = '';
-            let networkScriptPromise = null;
             let networkSnapshotTimer = 0;
             let networkResult = null;
             let difficulty = 'skilled';
@@ -870,7 +876,7 @@
                     overlayAction.disabled=false;
                     return;
                 }
-                const connected=Boolean(networkConnection&&networkConnection.open);
+                const connected=networkIsOpen();
                 const host=networkRole==='host';
                 overlayAction.disabled=!connected||!host;
                 if(!connected)overlayAction.textContent=networkRole?'Waiting for opponent…':'Host or join a room';
@@ -882,122 +888,138 @@
                 return networkRole==='guest'?1:0;
             }
 
+            function networkIsOpen() {
+                return Boolean(networkConnection&&networkConnection.readyState==='open');
+            }
+
             function sendNetwork(message) {
-                if(networkConnection&&networkConnection.open)networkConnection.send(message);
+                if(networkIsOpen())networkConnection.send(JSON.stringify(message));
             }
 
-            function loadPeerLibrary() {
-                if(window.Peer)return Promise.resolve();
-                if(networkScriptPromise)return networkScriptPromise;
-                networkScriptPromise=new Promise((resolve,reject)=>{
-                    const script=document.createElement('script');
-                    script.src='https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js';
-                    script.onload=resolve;
-                    script.onerror=()=>reject(new Error('Could not load the online connection library.'));
-                    document.head.append(script);
+            function waitForIceGathering(peer) {
+                if(peer.iceGatheringState==='complete')return Promise.resolve();
+                return new Promise((resolve,reject)=>{
+                    const timeout=window.setTimeout(()=>reject(new Error('Network setup timed out. Try again on a different network.')),20000);
+                    peer.addEventListener('icegatheringstatechange',()=>{
+                        if(peer.iceGatheringState==='complete'){
+                            window.clearTimeout(timeout);
+                            resolve();
+                        }
+                    });
                 });
-                return networkScriptPromise;
             }
 
-            function randomRoomCode() {
-                const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-                const values=new Uint8Array(6);
-                crypto.getRandomValues(values);
-                return Array.from(values,value=>alphabet[value%alphabet.length]).join('');
+            function encodeSignal(description) {
+                return btoa(JSON.stringify({type:description.type,sdp:description.sdp}));
+            }
+
+            function decodeSignal(value,expectedType) {
+                try{
+                    const signal=JSON.parse(atob(value.trim()));
+                    if(signal.type!==expectedType||typeof signal.sdp!=='string')throw new Error();
+                    return signal;
+                }catch{
+                    throw new Error(expectedType==='offer'?'Paste a valid invite code from the host.':'Paste a valid answer code from the guest.');
+                }
+            }
+
+            function configureRtc(peer) {
+                peer.addEventListener('connectionstatechange',()=>{
+                    if(peer.connectionState==='failed')setOnlineStatus('Direct connection failed. Try another network or Wi-Fi.');
+                });
+                return peer;
             }
 
             function closeOnline() {
                 const connection=networkConnection;
-                const peer=networkPeer;
+                const peer=networkRtc;
                 networkConnection=null;
-                networkPeer=null;
+                networkRtc=null;
                 networkRole=null;
-                networkRoomCode='';
-                if(connection)connection.close();
-                if(peer&&!peer.destroyed)peer.destroy();
-                document.getElementById('roomCode').readOnly=false;
+                if(connection&&connection.readyState!=='closed')connection.close();
+                if(peer&&peer.signalingState!=='closed')peer.close();
+                document.getElementById('signalData').readOnly=false;
                 document.getElementById('roomShare').hidden=true;
             }
 
-            function handlePeerError(error) {
-                const message=error&&error.type==='unavailable-id'
-                    ?'That room code is already in use. Host a new room.'
-                    :error&&error.type==='peer-unavailable'
-                        ?'Room not found. Check the code and try again.'
-                        :'Connection failed. Check the internet and try again.';
-                setOnlineStatus(message);
-                syncOnlineOverlay();
-            }
-
-            function attachNetworkConnection(connection,role) {
-                networkConnection=connection;
+            function attachDataChannel(channel,role) {
+                networkConnection=channel;
                 networkRole=role;
                 setMode('online');
-                connection.on('open',()=>{
+                channel.addEventListener('open',()=>{
                     setOnlineStatus(role==='host'?'Opponent connected. Start when ready.':'Connected. Waiting for the host to start.');
                     syncOnlineOverlay();
                     if(role==='host')sendNetworkState();
                     else sendNetwork({type:'hello'});
                 });
-                connection.on('data',handleNetworkMessage);
-                connection.on('close',()=>{
-                    if(networkConnection!==connection)return;
+                channel.addEventListener('message',event=>{
+                    try{handleNetworkMessage(JSON.parse(event.data));}
+                    catch{setOnlineStatus('Received invalid match data. Reconnect and try again.');}
+                });
+                channel.addEventListener('close',()=>{
+                    if(networkConnection!==channel)return;
                     if(role==='host')clearPlayerInputs(1);
                     networkConnection=null;
-                    setOnlineStatus('Opponent disconnected. Rejoin with a room code.');
+                    setOnlineStatus('Opponent disconnected. Exchange a new invite to reconnect.');
                     syncOnlineOverlay();
                 });
-                connection.on('error',handlePeerError);
+                syncOnlineOverlay();
             }
 
             async function hostOnline() {
-                if(!window.isSecureContext){setOnlineStatus('Online play requires HTTPS or localhost.');return;}
+                if(!window.isSecureContext||!window.RTCPeerConnection){setOnlineStatus('Online play requires HTTPS and WebRTC support.');return;}
                 closeOnline();
-                mode='online';
-                networkRole='host';
-                networkRoomCode=randomRoomCode();
-                const roomInput=document.getElementById('roomCode');
-                roomInput.value=networkRoomCode;
-                roomInput.readOnly=true;
-                document.getElementById('roomShare').hidden=false;
+                mode='online';networkRole='host';
+                document.getElementById('signalData').value='';
+                document.getElementById('signalData').readOnly=true;
+                document.getElementById('roomShare').hidden=true;
                 setMode('online');
-                setOnlineStatus('Connecting to the match service…');
-                syncOnlineOverlay();
+                setOnlineStatus('Creating a direct connection invite…');
                 try{
-                    await loadPeerLibrary();
-                    networkPeer=new window.Peer(`five-arrows-${networkRoomCode.toLowerCase()}`);
-                    networkPeer.on('open',()=>setOnlineStatus(`Room ${networkRoomCode} is ready. Share the code with your opponent.`));
-                    networkPeer.on('connection',connection=>{
-                        if(networkConnection&&networkConnection.open){connection.close();return;}
-                        attachNetworkConnection(connection,'host');
-                    });
-                    networkPeer.on('error',handlePeerError);
-                }catch(error){setOnlineStatus(error.message);}
+                    networkRtc=configureRtc(new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]}));
+                    const channel=networkRtc.createDataChannel('five-arrows',{ordered:true});
+                    attachDataChannel(channel,'host');
+                    const offer=await networkRtc.createOffer();
+                    await networkRtc.setLocalDescription(offer);
+                    await waitForIceGathering(networkRtc);
+                    document.getElementById('signalData').value=encodeSignal(networkRtc.localDescription);
+                    document.getElementById('roomShare').hidden=false;
+                    document.getElementById('signalData').readOnly=false;
+                    setOnlineStatus('Invite ready. Copy it and send it to your opponent.');
+                }catch(error){setOnlineStatus(error.message||'Could not create an invite.');}
+                syncOnlineOverlay();
             }
 
             async function joinOnline() {
-                if(!window.isSecureContext){setOnlineStatus('Online play requires HTTPS or localhost.');return;}
-                const code=document.getElementById('roomCode').value.trim().toUpperCase();
-                if(!/^[A-HJ-NP-Z2-9]{6}$/.test(code)){setOnlineStatus('Enter the six-character room code.');return;}
-                closeOnline();
-                mode='online';
-                networkRole='guest';
-                networkRoomCode=code;
-                document.getElementById('roomCode').value=code;
-                document.getElementById('roomCode').readOnly=false;
-                document.getElementById('roomShare').hidden=true;
-                setMode('online');
-                setOnlineStatus('Connecting to the room…');
-                syncOnlineOverlay();
+                if(!window.isSecureContext||!window.RTCPeerConnection){setOnlineStatus('Online play requires HTTPS and WebRTC support.');return;}
+                const signalField=document.getElementById('signalData');
                 try{
-                    await loadPeerLibrary();
-                    networkPeer=new window.Peer();
-                    networkPeer.on('open',()=>{
-                        const connection=networkPeer.connect(`five-arrows-${code.toLowerCase()}`,{serialization:'json',reliable:true});
-                        attachNetworkConnection(connection,'guest');
-                    });
-                    networkPeer.on('error',handlePeerError);
-                }catch(error){setOnlineStatus(error.message);}
+                    if(networkRole==='host'&&networkRtc&&networkRtc.signalingState==='have-local-offer'){
+                        const answer=decodeSignal(signalField.value,'answer');
+                        await networkRtc.setRemoteDescription(answer);
+                        signalField.readOnly=true;
+                        setOnlineStatus('Answer accepted. Connecting directly…');
+                        syncOnlineOverlay();
+                        return;
+                    }
+                    const offer=decodeSignal(signalField.value,'offer');
+                    closeOnline();
+                    mode='online';networkRole='guest';
+                    document.getElementById('roomShare').hidden=true;
+                    setMode('online');
+                    setOnlineStatus('Preparing your answer…');
+                    networkRtc=configureRtc(new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]}));
+                    networkRtc.addEventListener('datachannel',event=>attachDataChannel(event.channel,'guest'));
+                    await networkRtc.setRemoteDescription(offer);
+                    const answer=await networkRtc.createAnswer();
+                    await networkRtc.setLocalDescription(answer);
+                    await waitForIceGathering(networkRtc);
+                    signalField.value=encodeSignal(networkRtc.localDescription);
+                    signalField.readOnly=false;
+                    document.getElementById('roomShare').hidden=false;
+                    setOnlineStatus('Answer ready. Copy it and send it back to the host.');
+                    syncOnlineOverlay();
+                }catch(error){setOnlineStatus(error.message||'Could not process the connection code.');}
             }
 
             function createNetworkState() {
@@ -1011,7 +1033,7 @@
             }
 
             function sendNetworkState() {
-                if(mode==='online'&&networkRole==='host'&&networkConnection&&networkConnection.open)sendNetwork(createNetworkState());
+                if(mode==='online'&&networkRole==='host'&&networkIsOpen())sendNetwork(createNetworkState());
             }
 
             function showRemoteResult(result) {
@@ -1044,15 +1066,21 @@
             }
 
             function applyRemoteInput(message) {
-                const remoteId=networkRole==='host'?1:0;
-                if(message.playerId!==remoteId||keyPlayer(message.key)!==message.playerId)return;
+                if(networkRole!=='host'||message.playerId!==1||keyPlayer(message.key)!==message.playerId)return;
                 applyPlayerKey(message.playerId,message.key,message.down);
+            }
+
+            function applyRemoteMovement(message) {
+                if(networkRole!=='host'||message.playerId!==1||!Number.isFinite(message.value))return;
+                const player=players[1];
+                if(player&&!player.ai)player.humanMove=Math.max(-1,Math.min(1,message.value));
             }
 
             function handleNetworkMessage(message) {
                 if(!message||typeof message!=='object')return;
                 if(message.type==='hello'&&networkRole==='host')sendNetworkState();
                 else if(message.type==='input')applyRemoteInput(message);
+                else if(message.type==='move')applyRemoteMovement(message);
                 else if(message.type==='reset'&&networkRole==='host'&&message.playerId===1)clearPlayerInputs(1);
                 else if(message.type==='state')applyNetworkState(message);
                 else if(message.type==='action'&&networkRole==='guest'){
@@ -1100,12 +1128,32 @@
                 if(action==='bow')startDraw(player);
             }
 
+            function setStickPosition(stick,value) {
+                const bounded=Math.max(-1,Math.min(1,value));
+                const knob=stick.querySelector('.stick-knob');
+                knob.style.setProperty('--stick-x',`${bounded*27}px`);
+                stick.setAttribute('aria-valuenow',String(Math.round(bounded*100)));
+                return Math.abs(bounded)<.16?0:bounded;
+            }
+
+            function setStickMovement(stick,value) {
+                const id=Number(stick.dataset.player);
+                if(mode==='online'&&id!==localPlayerId())return;
+                const movement=setStickPosition(stick,value);
+                const player=players[id];
+                if(!player||player.ai||phase!=='round')return;
+                player.humanMove=movement;
+                if(mode==='online')sendNetwork({type:'move',playerId:id,value:movement});
+            }
+
             function clearPlayerInputs(id) {
                 const player=players[id];
                 if(!player)return;
                 const playerKeys=id===0?['a','d','w','s']:['arrowleft','arrowright','arrowup','arrowdown'];
                 playerKeys.forEach(key=>keys.delete(key));
                 player.humanMove=0;
+                const stick=document.querySelector(`.virtual-stick[data-player="${id}"]`);
+                if(stick)setStickPosition(stick,0);
                 releaseCrouch(player);
                 if(player.drawing)cancelDraw(player);
             }
@@ -1120,8 +1168,12 @@
                 const id=keyPlayer(key);if(id<0)return;
                 if(mode==='online'&&id!==localPlayerId())return;
                 if(event.repeat)return;
+                if(mode==='online'&&networkRole==='guest'){
+                    sendNetwork({type:'input',playerId:id,key,down:true});
+                    return;
+                }
                 applyPlayerKey(id,key,true);
-                if(mode==='online')sendNetwork({type:'input',playerId:id,key,down:true});
+                if(mode==='online'&&networkRole==='host')sendNetwork({type:'input',playerId:id,key,down:true});
             }
 
             function moveFor(id) {
@@ -1133,8 +1185,12 @@
                 const key=event.key.toLowerCase();
                 const id=keyPlayer(key);if(id<0||!players[id])return;
                 if(mode==='online'&&id!==localPlayerId())return;
+                if(mode==='online'&&networkRole==='guest'){
+                    sendNetwork({type:'input',playerId:id,key,down:false});
+                    return;
+                }
                 applyPlayerKey(id,key,false);
-                if(mode==='online')sendNetwork({type:'input',playerId:id,key,down:false});
+                if(mode==='online'&&networkRole==='host')sendNetwork({type:'input',playerId:id,key,down:false});
             }
 
             function touchAction(button,begin) {
@@ -1146,8 +1202,12 @@
                     :{left:'arrowleft',right:'arrowright',crouch:'arrowdown',jump:'arrowup',slash:'.',parry:'/',bow:','};
                 const key=keyByAction[action];
                 if(!key)return;
+                if(mode==='online'&&networkRole==='guest'){
+                    sendNetwork({type:'input',playerId:id,key,down:begin});
+                    return;
+                }
                 applyPlayerKey(id,key,begin);
-                if(mode==='online')sendNetwork({type:'input',playerId:id,key,down:begin});
+                if(mode==='online'&&networkRole==='host')sendNetwork({type:'input',playerId:id,key,down:begin});
             }
 
             function togglePause() {
@@ -1168,15 +1228,13 @@
             document.getElementById('hostRoom').addEventListener('click',hostOnline);
             document.getElementById('joinRoom').addEventListener('click',joinOnline);
             document.getElementById('copyRoom').addEventListener('click',async()=>{
-                try{await navigator.clipboard.writeText(networkRoomCode);setOnlineStatus('Room code copied. Send it to your opponent.');}
-                catch{setOnlineStatus(`Room code: ${networkRoomCode}. Copy it to your opponent.`);}
-            });
-            document.getElementById('roomCode').addEventListener('input',event=>{
-                event.currentTarget.value=event.currentTarget.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g,'').slice(0,6);
+                const code=document.getElementById('signalData').value;
+                try{await navigator.clipboard.writeText(code);setOnlineStatus('Code copied. Send it to the other device.');}
+                catch{document.getElementById('signalData').focus();document.getElementById('signalData').select();setOnlineStatus('Code selected. Copy it and send it to the other device.');}
             });
             overlayAction.addEventListener('click',()=>{
                 if(mode!=='online'){nextOverlayAction();return;}
-                if(networkRole!=='host'||!networkConnection||!networkConnection.open)return;
+                if(networkRole!=='host'||!networkIsOpen())return;
                 const action=phase==='menu'?'start':scores.some(score=>score>=3)?'rematch':'next';
                 nextOverlayAction();
                 sendNetwork({type:'action',action});
@@ -1189,9 +1247,11 @@
             window.addEventListener('keydown',handleDown);
             window.addEventListener('keyup',handleUp);
             window.addEventListener('blur',()=>{
-                const id=localPlayerId();
-                clearPlayerInputs(id);
-                if(mode==='online')sendNetwork({type:'reset',playerId:id});
+                if(mode==='online'){
+                    const id=localPlayerId();
+                    clearPlayerInputs(id);
+                    sendNetwork({type:'reset',playerId:id});
+                }else players.forEach(player=>clearPlayerInputs(player.id));
             });
             canvas.addEventListener('pointerdown',()=>canvas.focus());
             document.querySelectorAll('.touch-buttons button').forEach(button=>{
@@ -1199,6 +1259,22 @@
                 button.addEventListener('pointerup',event=>{event.preventDefault();touchAction(button,false);});
                 button.addEventListener('pointercancel',()=>touchAction(button,false));
                 button.addEventListener('lostpointercapture',()=>touchAction(button,false));
+            });
+            document.querySelectorAll('.virtual-stick').forEach(stick=>{
+                const moveStick=event=>{
+                    const bounds=stick.getBoundingClientRect();
+                    const center=bounds.left+bounds.width/2;
+                    const reach=bounds.width*.3;
+                    setStickMovement(stick,(event.clientX-center)/reach);
+                };
+                stick.addEventListener('pointerdown',event=>{
+                    event.preventDefault();stick.setPointerCapture(event.pointerId);moveStick(event);
+                });
+                stick.addEventListener('pointermove',event=>{if(stick.hasPointerCapture(event.pointerId))moveStick(event);});
+                const releaseStick=event=>{setStickMovement(stick,0);if(stick.hasPointerCapture(event.pointerId))stick.releasePointerCapture(event.pointerId);};
+                stick.addEventListener('pointerup',releaseStick);
+                stick.addEventListener('pointercancel',releaseStick);
+                stick.addEventListener('lostpointercapture',()=>setStickMovement(stick,0));
             });
             document.getElementById('difficulty').addEventListener('change',event=>{difficulty=event.target.value;});
             window.addEventListener('resize',resize);
