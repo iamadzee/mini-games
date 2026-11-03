@@ -8,6 +8,7 @@
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" href="./icon.svg" type="image/svg+xml">
     <title>Five Arrows: Parry Duel</title>
+    <script defer src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         :root { color-scheme:dark; --page:#10131c; --panel:#191f29; --panel2:#222b35; --line:#36414d; --ink:#eef2f4; --muted:#9da9b2; --mint:#72e0cb; --red:#ff836d; --gold:#efc46e; font-family:"Avenir Next",Avenir,"Trebuchet MS",sans-serif; background:var(--page); color:var(--ink); }
         * { box-sizing:border-box; }
@@ -64,14 +65,18 @@
         select { width:min(100%,240px); min-height:36px; padding:7px 9px; border:1px solid var(--line); border-radius:4px; background:var(--panel); color:var(--ink); }
         .online-field { display:grid; gap:7px; margin-top:12px; }
         .online-field label { color:var(--muted); font-size:.68rem; font-weight:750; }
-        .room-controls { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; }
+        .room-controls { display:grid; grid-template-columns:1fr minmax(96px,1.1fr) 1fr; gap:6px; }
         .room-controls button { min-width:0; padding-inline:6px; font-size:.68rem; }
-        .room-controls textarea { width:100%; min-width:0; min-height:92px; grid-column:1 / -1; padding:8px; resize:vertical; border:1px solid var(--line); border-radius:4px; background:var(--page); color:var(--ink); font:600 .64rem/1.4 ui-monospace,monospace; overflow-wrap:anywhere; }
+        .room-controls input { width:100%; min-width:0; min-height:36px; padding:6px 8px; border:1px solid var(--line); border-radius:4px; background:var(--page); color:var(--ink); font:800 .82rem ui-monospace,monospace; text-align:center; text-transform:uppercase; letter-spacing:.12em; }
         .room-share { display:flex; gap:6px; }
-        .room-share button { flex:1; }
+        .room-share button { flex:1; font-size:.66rem; }
         .online-status,.online-note { margin:0; color:var(--muted); font-size:.65rem; line-height:1.4; }
         .online-status { color:var(--mint); }
         .online-note { color:#829099; }
+        @media(max-width:380px) {
+            .room-controls { grid-template-columns:1fr 1fr; }
+            .room-controls input { grid-column:1 / -1; order:-1; }
+        }
         .overlay-actions { display:flex; gap:8px; margin-top:17px; }
         .overlay-actions .primary { border-color:var(--gold); background:var(--gold); color:#171713; }
         .eventbar { min-height:39px; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 11px; border:1px solid var(--line); border-top:0; background:var(--panel); }
@@ -134,11 +139,18 @@
                             <div class="mode-row"><button id="twoMode" type="button" aria-pressed="true">Two player</button><button id="aiMode" type="button" aria-pressed="false">Vs AI</button><button id="onlineMode" type="button" aria-pressed="false">Online</button></div>
                             <div class="difficulty-field" id="difficultyField" hidden><label for="difficulty">Opponent style</label><select id="difficulty"><option value="novice">Novice · panic shots</option><option value="skilled" selected>Skilled · punishes recovery</option><option value="swordmaster">Swordmaster · holds the threat</option></select></div>
                             <div class="online-field" id="onlineField" hidden>
-                                <label for="signalData">Invite / answer code</label>
-                                <div class="room-controls"><textarea id="signalData" rows="4" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Create an invite, or paste your opponent’s code" aria-label="WebRTC invite or answer code"></textarea><button id="hostRoom" type="button">Create invite</button><button id="joinRoom" type="button">Connect / finish</button></div>
-                                <div class="room-share" id="roomShare" hidden><button id="copyRoom" type="button">Copy code</button></div>
+                                <label for="roomCode">Room code</label>
+                                <div class="room-controls">
+                                    <button id="hostRoom" type="button">Host room</button>
+                                    <input id="roomCode" type="text" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="6-CHAR CODE" aria-label="Six character room code">
+                                    <button id="joinRoom" type="button">Join</button>
+                                </div>
+                                <div class="room-share" id="roomShare" hidden>
+                                    <button id="copyRoom" type="button">Copy code</button>
+                                    <button id="copyLink" type="button">Copy link</button>
+                                </div>
                                 <p class="online-status" id="onlineStatus" aria-live="polite">Host a room or enter a friend’s code.</p>
-                                <p class="online-note">Share the invite, then the answer, between devices. HTTPS required; some networks block direct connections.</p>
+                                <p class="online-note">Host creates a room code. Guest enters the code to connect.</p>
                             </div>
                             <div class="overlay-actions"><button class="primary" id="overlayAction" type="button">Enter the ring</button></div>
                         </div>
@@ -186,10 +198,14 @@
             let arrows = [];
             let stuckArrows = [];
             let particles = [];
-            let mode = new URLSearchParams(location.search).get('mode') === 'ai' ? 'ai' : 'two';
-            let networkRtc = null;
+            const initialModeParam = new URLSearchParams(location.search).get('mode');
+            const initialRoomParam = new URLSearchParams(location.search).get('room') || new URLSearchParams(location.search).get('code');
+            let mode = initialModeParam === 'ai' ? 'ai' : (initialModeParam === 'online' || initialRoomParam) ? 'online' : 'two';
+            let networkPeer = null;
             let networkConnection = null;
             let networkRole = null;
+            let networkRoomCode = '';
+            let networkScriptPromise = null;
             let networkSnapshotTimer = 0;
             let networkResult = null;
             let difficulty = 'skilled';
@@ -879,7 +895,7 @@
                 const connected=networkIsOpen();
                 const host=networkRole==='host';
                 overlayAction.disabled=!connected||!host;
-                if(!connected)overlayAction.textContent=networkRole?'Waiting for opponent…':'Host or join a room';
+                if(!connected)overlayAction.textContent=networkRole==='host'?'Waiting for opponent…':networkRole==='guest'?'Connecting…':'Host or join a room';
                 else if(host)overlayAction.textContent=phase==='menu'?'Start online match':scores.some(score=>score>=3)?'Rematch':'Next round';
                 else overlayAction.textContent='Waiting for host…';
             }
@@ -889,137 +905,192 @@
             }
 
             function networkIsOpen() {
-                return Boolean(networkConnection&&networkConnection.readyState==='open');
+                return Boolean(networkConnection&&networkConnection.open);
             }
 
             function sendNetwork(message) {
-                if(networkIsOpen())networkConnection.send(JSON.stringify(message));
-            }
-
-            function waitForIceGathering(peer) {
-                if(peer.iceGatheringState==='complete')return Promise.resolve();
-                return new Promise((resolve,reject)=>{
-                    const timeout=window.setTimeout(()=>reject(new Error('Network setup timed out. Try again on a different network.')),20000);
-                    peer.addEventListener('icegatheringstatechange',()=>{
-                        if(peer.iceGatheringState==='complete'){
-                            window.clearTimeout(timeout);
-                            resolve();
-                        }
-                    });
-                });
-            }
-
-            function encodeSignal(description) {
-                return btoa(JSON.stringify({type:description.type,sdp:description.sdp}));
-            }
-
-            function decodeSignal(value,expectedType) {
-                try{
-                    const signal=JSON.parse(atob(value.trim()));
-                    if(signal.type!==expectedType||typeof signal.sdp!=='string')throw new Error();
-                    return signal;
-                }catch{
-                    throw new Error(expectedType==='offer'?'Paste a valid invite code from the host.':'Paste a valid answer code from the guest.');
+                if(networkIsOpen()){
+                    try{networkConnection.send(message);}
+                    catch{}
                 }
             }
 
-            function configureRtc(peer) {
-                peer.addEventListener('connectionstatechange',()=>{
-                    if(peer.connectionState==='failed')setOnlineStatus('Direct connection failed. Try another network or Wi-Fi.');
+            function loadPeerLibrary() {
+                if(window.Peer)return Promise.resolve();
+                if(networkScriptPromise)return networkScriptPromise;
+                const cdnUrls=[
+                    'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js',
+                    'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js',
+                    'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'
+                ];
+                networkScriptPromise=new Promise((resolve,reject)=>{
+                    let index=0;
+                    function tryNext(){
+                        if(window.Peer){resolve();return;}
+                        if(index>=cdnUrls.length){
+                            networkScriptPromise=null;
+                            reject(new Error('Could not load online multiplayer library. Check your internet connection.'));
+                            return;
+                        }
+                        const script=document.createElement('script');
+                        script.src=cdnUrls[index++];
+                        script.onload=()=>{
+                            if(window.Peer)resolve();
+                            else tryNext();
+                        };
+                        script.onerror=()=>{
+                            script.remove();
+                            tryNext();
+                        };
+                        document.head.append(script);
+                    }
+                    tryNext();
                 });
-                return peer;
+                return networkScriptPromise;
+            }
+
+            function randomRoomCode() {
+                const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                const values=new Uint8Array(6);
+                crypto.getRandomValues(values);
+                return Array.from(values,value=>alphabet[value%alphabet.length]).join('');
             }
 
             function closeOnline() {
                 const connection=networkConnection;
-                const peer=networkRtc;
+                const peer=networkPeer;
                 networkConnection=null;
-                networkRtc=null;
+                networkPeer=null;
                 networkRole=null;
-                if(connection&&connection.readyState!=='closed')connection.close();
-                if(peer&&peer.signalingState!=='closed')peer.close();
-                document.getElementById('signalData').readOnly=false;
-                document.getElementById('roomShare').hidden=true;
+                networkRoomCode='';
+                if(connection){try{connection.close();}catch{}}
+                if(peer&&!peer.destroyed){try{peer.destroy();}catch{}}
+                const roomInput=document.getElementById('roomCode');
+                if(roomInput)roomInput.readOnly=false;
+                const share=document.getElementById('roomShare');
+                if(share)share.hidden=true;
             }
 
-            function attachDataChannel(channel,role) {
-                networkConnection=channel;
+            function handlePeerError(error) {
+                const type=error&&error.type;
+                const message=type==='unavailable-id'
+                    ?'That room code is already in use. Host again for a new code.'
+                    :type==='peer-unavailable'
+                        ?'Room not found. Check the code and try again.'
+                        :type==='network'
+                            ?'Network connection lost. Check your internet.'
+                            :error&&error.message
+                                ?error.message
+                                :'Connection failed. Check your internet connection and try again.';
+                setOnlineStatus(message);
+                syncOnlineOverlay();
+            }
+
+            function attachNetworkConnection(connection,role) {
+                networkConnection=connection;
                 networkRole=role;
                 setMode('online');
-                channel.addEventListener('open',()=>{
+                connection.on('open',()=>{
                     setOnlineStatus(role==='host'?'Opponent connected. Start when ready.':'Connected. Waiting for the host to start.');
                     syncOnlineOverlay();
                     if(role==='host')sendNetworkState();
                     else sendNetwork({type:'hello'});
                 });
-                channel.addEventListener('message',event=>{
-                    try{handleNetworkMessage(JSON.parse(event.data));}
-                    catch{setOnlineStatus('Received invalid match data. Reconnect and try again.');}
+                connection.on('data',data=>{
+                    try{
+                        const message=typeof data==='string'?JSON.parse(data):data;
+                        handleNetworkMessage(message);
+                    }catch{
+                        setOnlineStatus('Received invalid match data.');
+                    }
                 });
-                channel.addEventListener('close',()=>{
-                    if(networkConnection!==channel)return;
+                connection.on('close',()=>{
+                    if(networkConnection!==connection)return;
                     if(role==='host')clearPlayerInputs(1);
                     networkConnection=null;
-                    setOnlineStatus('Opponent disconnected. Exchange a new invite to reconnect.');
+                    setOnlineStatus('Opponent disconnected. Enter a room code to reconnect.');
                     syncOnlineOverlay();
                 });
+                connection.on('error',handlePeerError);
                 syncOnlineOverlay();
             }
 
             async function hostOnline() {
-                if(!window.isSecureContext||!window.RTCPeerConnection){setOnlineStatus('Online play requires HTTPS and WebRTC support.');return;}
                 closeOnline();
-                mode='online';networkRole='host';
-                document.getElementById('signalData').value='';
-                document.getElementById('signalData').readOnly=true;
-                document.getElementById('roomShare').hidden=true;
+                mode='online';
+                networkRole='host';
+                networkRoomCode=randomRoomCode();
+                const roomInput=document.getElementById('roomCode');
+                if(roomInput){
+                    roomInput.value=networkRoomCode;
+                    roomInput.readOnly=true;
+                }
+                const share=document.getElementById('roomShare');
+                if(share)share.hidden=false;
                 setMode('online');
-                setOnlineStatus('Creating a direct connection invite…');
+                setOnlineStatus('Connecting to match service…');
+                syncOnlineOverlay();
                 try{
-                    networkRtc=configureRtc(new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]}));
-                    const channel=networkRtc.createDataChannel('five-arrows',{ordered:true});
-                    attachDataChannel(channel,'host');
-                    const offer=await networkRtc.createOffer();
-                    await networkRtc.setLocalDescription(offer);
-                    await waitForIceGathering(networkRtc);
-                    document.getElementById('signalData').value=encodeSignal(networkRtc.localDescription);
-                    document.getElementById('roomShare').hidden=false;
-                    document.getElementById('signalData').readOnly=false;
-                    setOnlineStatus('Invite ready. Copy it and send it to your opponent.');
-                }catch(error){setOnlineStatus(error.message||'Could not create an invite.');}
+                    await loadPeerLibrary();
+                    networkPeer=new window.Peer(`five-arrows-${networkRoomCode.toLowerCase()}`,{
+                        config:{iceServers:[
+                            {urls:'stun:stun.l.google.com:19302'},
+                            {urls:'stun:stun1.l.google.com:19302'},
+                            {urls:'stun:stun2.l.google.com:19302'}
+                        ]}
+                    });
+                    networkPeer.on('open',()=>{
+                        setOnlineStatus(`Room ${networkRoomCode} is ready. Share the code with your opponent.`);
+                        syncOnlineOverlay();
+                    });
+                    networkPeer.on('connection',connection=>{
+                        if(networkConnection&&networkConnection.open){connection.close();return;}
+                        attachNetworkConnection(connection,'host');
+                    });
+                    networkPeer.on('error',handlePeerError);
+                }catch(error){
+                    setOnlineStatus(error.message||'Could not create a room.');
+                }
                 syncOnlineOverlay();
             }
 
             async function joinOnline() {
-                if(!window.isSecureContext||!window.RTCPeerConnection){setOnlineStatus('Online play requires HTTPS and WebRTC support.');return;}
-                const signalField=document.getElementById('signalData');
+                const roomInput=document.getElementById('roomCode');
+                const code=roomInput?roomInput.value.trim().toUpperCase():'';
+                if(!code||code.length<4){
+                    setOnlineStatus('Enter the room code from the host.');
+                    if(roomInput)roomInput.focus();
+                    return;
+                }
+                closeOnline();
+                mode='online';
+                networkRole='guest';
+                networkRoomCode=code;
+                if(roomInput){
+                    roomInput.value=code;
+                    roomInput.readOnly=false;
+                }
+                setMode('online');
+                setOnlineStatus(`Connecting to room ${code}…`);
+                syncOnlineOverlay();
                 try{
-                    if(networkRole==='host'&&networkRtc&&networkRtc.signalingState==='have-local-offer'){
-                        const answer=decodeSignal(signalField.value,'answer');
-                        await networkRtc.setRemoteDescription(answer);
-                        signalField.readOnly=true;
-                        setOnlineStatus('Answer accepted. Connecting directly…');
-                        syncOnlineOverlay();
-                        return;
-                    }
-                    const offer=decodeSignal(signalField.value,'offer');
-                    closeOnline();
-                    mode='online';networkRole='guest';
-                    document.getElementById('roomShare').hidden=true;
-                    setMode('online');
-                    setOnlineStatus('Preparing your answer…');
-                    networkRtc=configureRtc(new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]}));
-                    networkRtc.addEventListener('datachannel',event=>attachDataChannel(event.channel,'guest'));
-                    await networkRtc.setRemoteDescription(offer);
-                    const answer=await networkRtc.createAnswer();
-                    await networkRtc.setLocalDescription(answer);
-                    await waitForIceGathering(networkRtc);
-                    signalField.value=encodeSignal(networkRtc.localDescription);
-                    signalField.readOnly=false;
-                    document.getElementById('roomShare').hidden=false;
-                    setOnlineStatus('Answer ready. Copy it and send it back to the host.');
-                    syncOnlineOverlay();
-                }catch(error){setOnlineStatus(error.message||'Could not process the connection code.');}
+                    await loadPeerLibrary();
+                    networkPeer=new window.Peer({
+                        config:{iceServers:[
+                            {urls:'stun:stun.l.google.com:19302'},
+                            {urls:'stun:stun1.l.google.com:19302'},
+                            {urls:'stun:stun2.l.google.com:19302'}
+                        ]}
+                    });
+                    networkPeer.on('open',()=>{
+                        const connection=networkPeer.connect(`five-arrows-${code.toLowerCase()}`,{reliable:true});
+                        attachNetworkConnection(connection,'guest');
+                    });
+                    networkPeer.on('error',handlePeerError);
+                }catch(error){
+                    setOnlineStatus(error.message||'Could not connect to the room.');
+                }
+                syncOnlineOverlay();
             }
 
             function createNetworkState() {
@@ -1228,9 +1299,31 @@
             document.getElementById('hostRoom').addEventListener('click',hostOnline);
             document.getElementById('joinRoom').addEventListener('click',joinOnline);
             document.getElementById('copyRoom').addEventListener('click',async()=>{
-                const code=document.getElementById('signalData').value;
-                try{await navigator.clipboard.writeText(code);setOnlineStatus('Code copied. Send it to the other device.');}
-                catch{document.getElementById('signalData').focus();document.getElementById('signalData').select();setOnlineStatus('Code selected. Copy it and send it to the other device.');}
+                if(!networkRoomCode)return;
+                try{
+                    await navigator.clipboard.writeText(networkRoomCode);
+                    setOnlineStatus(`Room code ${networkRoomCode} copied! Send it to your opponent.`);
+                }catch{
+                    const roomInput=document.getElementById('roomCode');
+                    if(roomInput){roomInput.focus();roomInput.select();}
+                    setOnlineStatus(`Room code: ${networkRoomCode}. Send it to your opponent.`);
+                }
+            });
+            document.getElementById('copyLink').addEventListener('click',async()=>{
+                if(!networkRoomCode)return;
+                const link=`${location.origin}${location.pathname}?room=${networkRoomCode}`;
+                try{
+                    await navigator.clipboard.writeText(link);
+                    setOnlineStatus('Invite link copied! Send it to your opponent.');
+                }catch{
+                    setOnlineStatus(`Invite link: ${link}`);
+                }
+            });
+            document.getElementById('roomCode').addEventListener('input',event=>{
+                event.currentTarget.value=event.currentTarget.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g,'').slice(0,6);
+            });
+            document.getElementById('roomCode').addEventListener('keydown',event=>{
+                if(event.key==='Enter')joinOnline();
             });
             overlayAction.addEventListener('click',()=>{
                 if(mode!=='online'){nextOverlayAction();return;}
@@ -1281,6 +1374,14 @@
             if('ResizeObserver'in window)new ResizeObserver(resize).observe(canvas);
             setMode(mode);
             if(['novice','skilled','swordmaster'].includes(new URLSearchParams(location.search).get('level'))){difficulty=new URLSearchParams(location.search).get('level');document.getElementById('difficulty').value=difficulty;}
+            if(initialRoomParam){
+                const clean=initialRoomParam.trim().toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g,'').slice(0,6);
+                const roomInput=document.getElementById('roomCode');
+                if(roomInput&&clean){
+                    roomInput.value=clean;
+                    setOnlineStatus(`Room ${clean} ready. Click Join to connect.`);
+                }
+            }
             updateHud();resize();requestAnimationFrame(frame);
             if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));
         })();
