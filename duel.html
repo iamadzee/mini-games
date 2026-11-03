@@ -8,7 +8,6 @@
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" href="./icon.svg" type="image/svg+xml">
     <title>Five Arrows: Parry Duel</title>
-    <script defer src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         :root { color-scheme:dark; --page:#10131c; --panel:#191f29; --panel2:#222b35; --line:#36414d; --ink:#eef2f4; --muted:#9da9b2; --mint:#72e0cb; --red:#ff836d; --gold:#efc46e; font-family:"Avenir Next",Avenir,"Trebuchet MS",sans-serif; background:var(--page); color:var(--ink); }
         * { box-sizing:border-box; }
@@ -201,11 +200,11 @@
             const initialModeParam = new URLSearchParams(location.search).get('mode');
             const initialRoomParam = new URLSearchParams(location.search).get('room') || new URLSearchParams(location.search).get('code');
             let mode = initialModeParam === 'ai' ? 'ai' : (initialModeParam === 'online' || initialRoomParam) ? 'online' : 'two';
-            let networkPeer = null;
+            let networkRtc = null;
             let networkConnection = null;
             let networkRole = null;
             let networkRoomCode = '';
-            let networkScriptPromise = null;
+            let signalingClient = null;
             let networkSnapshotTimer = 0;
             let networkResult = null;
             let difficulty = 'skilled';
@@ -905,192 +904,438 @@
             }
 
             function networkIsOpen() {
-                return Boolean(networkConnection&&networkConnection.open);
+                return Boolean(networkConnection && networkConnection.readyState === 'open');
             }
 
             function sendNetwork(message) {
                 if(networkIsOpen()){
-                    try{networkConnection.send(message);}
+                    try{networkConnection.send(JSON.stringify(message));}
                     catch{}
                 }
             }
 
-            function loadPeerLibrary() {
-                if(window.Peer)return Promise.resolve();
-                if(networkScriptPromise)return networkScriptPromise;
-                const cdnUrls=[
-                    'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js',
-                    'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js',
-                    'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'
-                ];
-                networkScriptPromise=new Promise((resolve,reject)=>{
-                    let index=0;
-                    function tryNext(){
-                        if(window.Peer){resolve();return;}
-                        if(index>=cdnUrls.length){
-                            networkScriptPromise=null;
-                            reject(new Error('Could not load online multiplayer library. Check your internet connection.'));
-                            return;
-                        }
-                        const script=document.createElement('script');
-                        script.src=cdnUrls[index++];
-                        script.onload=()=>{
-                            if(window.Peer)resolve();
-                            else tryNext();
-                        };
-                        script.onerror=()=>{
-                            script.remove();
-                            tryNext();
-                        };
-                        document.head.append(script);
+            const BROKER_SERVERS = [
+                'wss://broker.hivemq.com:8884/mqtt',
+                'wss://broker.emqx.io:8084/mqtt'
+            ];
+
+            function encodeVarInt(num) {
+                const bytes = [];
+                do {
+                    let byte = num % 128;
+                    num = Math.floor(num / 128);
+                    if (num > 0) byte |= 0x80;
+                    bytes.push(byte);
+                } while (num > 0);
+                return bytes;
+            }
+
+            function decodeVarInt(data, offset = 1) {
+                let multiplier = 1, value = 0, bytesRead = 0, digit;
+                do {
+                    digit = data[offset + bytesRead++];
+                    value += (digit & 127) * multiplier;
+                    multiplier *= 128;
+                } while ((digit & 128) !== 0);
+                return { value, length: bytesRead };
+            }
+
+            function encodeString(str) {
+                const encoded = new TextEncoder().encode(str);
+                const len = encoded.length;
+                return [Math.floor(len / 256), len % 256, ...encoded];
+            }
+
+            function createConnectPacket(clientId) {
+                const varHeader = [0x00, 0x04, 0x4d, 0x51, 0x54, 0x54, 0x04, 0x02, 0x00, 0x3c];
+                const payload = encodeString(clientId);
+                const remaining = [...varHeader, ...payload];
+                return new Uint8Array([0x10, ...encodeVarInt(remaining.length), ...remaining]);
+            }
+
+            function createSubscribePacket(topic, packetId = 1) {
+                const varHeader = [Math.floor(packetId / 256), packetId % 256];
+                const payload = [...encodeString(topic), 0x00];
+                const remaining = [...varHeader, ...payload];
+                return new Uint8Array([0x82, ...encodeVarInt(remaining.length), ...remaining]);
+            }
+
+            function createPublishPacket(topic, payloadStr) {
+                const varHeader = encodeString(topic);
+                const payload = new TextEncoder().encode(payloadStr);
+                const remaining = [...varHeader, ...payload];
+                return new Uint8Array([0x30, ...encodeVarInt(remaining.length), ...remaining]);
+            }
+
+            class MiniMqttClient {
+                constructor(urls) {
+                    this.urls = Array.isArray(urls) ? urls : [urls];
+                    this.urlIndex = 0;
+                    this.ws = null;
+                    this.clientId = 'fa_' + Math.random().toString(36).slice(2, 10);
+                    this.handlers = new Map();
+                    this.connected = false;
+                    this.closed = false;
+                    this.pingTimer = null;
+                    this.connectTimer = null;
+                    this.onConnectCallback = null;
+                    this.onErrorCallback = null;
+                }
+
+                connect() {
+                    if (this.closed) return;
+                    const url = this.urls[this.urlIndex % this.urls.length];
+                    try {
+                        this.ws = new WebSocket(url, 'mqtt');
+                        this.ws.binaryType = 'arraybuffer';
+                    } catch (err) {
+                        this.tryNextUrl(err);
+                        return;
                     }
-                    tryNext();
-                });
-                return networkScriptPromise;
+
+                    this.connectTimer = setTimeout(() => {
+                        if (!this.connected) {
+                            this.tryNextUrl(new Error('Signaling connection timed out.'));
+                        }
+                    }, 5000);
+
+                    this.ws.onopen = () => {
+                        this.ws.send(createConnectPacket(this.clientId));
+                    };
+
+                    this.ws.onmessage = (event) => {
+                        this.handleData(event.data);
+                    };
+
+                    this.ws.onerror = (err) => {
+                        if (!this.connected) this.tryNextUrl(err);
+                    };
+
+                    this.ws.onclose = () => {
+                        clearInterval(this.pingTimer);
+                        if (!this.closed && !this.connected) {
+                            this.tryNextUrl(new Error('Signaling closed.'));
+                        }
+                    };
+                }
+
+                tryNextUrl(err) {
+                    clearTimeout(this.connectTimer);
+                    clearInterval(this.pingTimer);
+                    if (this.ws) {
+                        try { this.ws.close(); } catch {}
+                        this.ws = null;
+                    }
+                    this.urlIndex++;
+                    if (this.urlIndex < this.urls.length) {
+                        this.connect();
+                    } else if (this.onErrorCallback) {
+                        this.onErrorCallback(err || new Error('Could not connect to online match service.'));
+                    }
+                }
+
+                handleData(buffer) {
+                    const data = new Uint8Array(buffer);
+                    let index = 0;
+                    while (index < data.length) {
+                        const firstByte = data[index];
+                        const type = firstByte >> 4;
+                        const qos = (firstByte >> 1) & 0x03;
+                        const { value: remLen, length: varLen } = decodeVarInt(data, index + 1);
+                        const packetEnd = index + 1 + varLen + remLen;
+                        if (packetEnd > data.length) break;
+
+                        if (type === 2) {
+                            clearTimeout(this.connectTimer);
+                            const returnCode = data[index + 3];
+                            if (returnCode === 0) {
+                                this.connected = true;
+                                this.pingTimer = setInterval(() => {
+                                    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                                        this.ws.send(new Uint8Array([0xc0, 0x00]));
+                                    }
+                                }, 25000);
+                                if (this.onConnectCallback) this.onConnectCallback();
+                            } else {
+                                this.tryNextUrl(new Error('Connection rejected by broker.'));
+                                return;
+                            }
+                        } else if (type === 3) {
+                            let offset = index + 1 + varLen;
+                            const topicLen = (data[offset] << 8) | data[offset + 1];
+                            offset += 2;
+                            const topic = new TextDecoder().decode(data.slice(offset, offset + topicLen));
+                            offset += topicLen;
+                            if (qos > 0) offset += 2;
+                            const payloadStr = new TextDecoder().decode(data.slice(offset, packetEnd));
+                            const callback = this.handlers.get(topic);
+                            if (callback) {
+                                try {
+                                    callback(JSON.parse(payloadStr), topic);
+                                } catch {
+                                    callback(payloadStr, topic);
+                                }
+                            }
+                        }
+                        index = packetEnd;
+                    }
+                }
+
+                subscribe(topic, callback) {
+                    this.handlers.set(topic, callback);
+                    if (this.ws && this.ws.readyState === WebSocket.OPEN && this.connected) {
+                        this.ws.send(createSubscribePacket(topic));
+                    }
+                }
+
+                publish(topic, payload) {
+                    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+                    const str = typeof payload === 'string' ? payload : JSON.stringify(payload);
+                    this.ws.send(createPublishPacket(topic, str));
+                }
+
+                close() {
+                    this.closed = true;
+                    clearTimeout(this.connectTimer);
+                    clearInterval(this.pingTimer);
+                    if (this.ws) {
+                        try { this.ws.close(); } catch {}
+                        this.ws = null;
+                    }
+                    this.handlers.clear();
+                }
             }
 
             function randomRoomCode() {
-                const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-                const values=new Uint8Array(6);
+                const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                const values = new Uint8Array(6);
                 crypto.getRandomValues(values);
-                return Array.from(values,value=>alphabet[value%alphabet.length]).join('');
+                return Array.from(values, value => alphabet[value % alphabet.length]).join('');
             }
 
             function closeOnline() {
-                const connection=networkConnection;
-                const peer=networkPeer;
-                networkConnection=null;
-                networkPeer=null;
-                networkRole=null;
-                networkRoomCode='';
-                if(connection){try{connection.close();}catch{}}
-                if(peer&&!peer.destroyed){try{peer.destroy();}catch{}}
-                const roomInput=document.getElementById('roomCode');
-                if(roomInput)roomInput.readOnly=false;
-                const share=document.getElementById('roomShare');
-                if(share)share.hidden=true;
+                if (signalingClient) {
+                    try { signalingClient.close(); } catch {}
+                    signalingClient = null;
+                }
+                const connection = networkConnection;
+                const rtc = networkRtc;
+                networkConnection = null;
+                networkRtc = null;
+                networkRole = null;
+                networkRoomCode = '';
+                if (connection) { try { connection.close(); } catch {} }
+                if (rtc) { try { rtc.close(); } catch {} }
+                const roomInput = document.getElementById('roomCode');
+                if (roomInput) roomInput.readOnly = false;
+                const share = document.getElementById('roomShare');
+                if (share) share.hidden = true;
             }
 
-            function handlePeerError(error) {
-                const type=error&&error.type;
-                const message=type==='unavailable-id'
-                    ?'That room code is already in use. Host again for a new code.'
-                    :type==='peer-unavailable'
-                        ?'Room not found. Check the code and try again.'
-                        :type==='network'
-                            ?'Network connection lost. Check your internet.'
-                            :error&&error.message
-                                ?error.message
-                                :'Connection failed. Check your internet connection and try again.';
-                setOnlineStatus(message);
-                syncOnlineOverlay();
-            }
-
-            function attachNetworkConnection(connection,role) {
-                networkConnection=connection;
-                networkRole=role;
+            function attachDataChannel(channel, role) {
+                networkConnection = channel;
+                networkRole = role;
                 setMode('online');
-                connection.on('open',()=>{
-                    setOnlineStatus(role==='host'?'Opponent connected. Start when ready.':'Connected. Waiting for the host to start.');
+                channel.onopen = () => {
+                    if (signalingClient) {
+                        try { signalingClient.close(); } catch {}
+                        signalingClient = null;
+                    }
+                    setOnlineStatus(role === 'host' ? 'Opponent connected. Start when ready.' : 'Connected. Waiting for host to start.');
                     syncOnlineOverlay();
-                    if(role==='host')sendNetworkState();
-                    else sendNetwork({type:'hello'});
-                });
-                connection.on('data',data=>{
-                    try{
-                        const message=typeof data==='string'?JSON.parse(data):data;
+                    if (role === 'host') sendNetworkState();
+                    else sendNetwork({ type: 'hello' });
+                };
+                channel.onmessage = event => {
+                    try {
+                        const message = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
                         handleNetworkMessage(message);
-                    }catch{
+                    } catch {
                         setOnlineStatus('Received invalid match data.');
                     }
-                });
-                connection.on('close',()=>{
-                    if(networkConnection!==connection)return;
-                    if(role==='host')clearPlayerInputs(1);
-                    networkConnection=null;
+                };
+                channel.onclose = () => {
+                    if (networkConnection !== channel) return;
+                    if (role === 'host') clearPlayerInputs(1);
+                    networkConnection = null;
                     setOnlineStatus('Opponent disconnected. Enter a room code to reconnect.');
                     syncOnlineOverlay();
-                });
-                connection.on('error',handlePeerError);
+                };
+                channel.onerror = () => {
+                    setOnlineStatus('Direct connection error. Try reconnecting.');
+                    syncOnlineOverlay();
+                };
                 syncOnlineOverlay();
             }
 
             async function hostOnline() {
                 closeOnline();
-                mode='online';
-                networkRole='host';
-                networkRoomCode=randomRoomCode();
-                const roomInput=document.getElementById('roomCode');
-                if(roomInput){
-                    roomInput.value=networkRoomCode;
-                    roomInput.readOnly=true;
+                mode = 'online';
+                networkRole = 'host';
+                networkRoomCode = randomRoomCode();
+                const roomInput = document.getElementById('roomCode');
+                if (roomInput) {
+                    roomInput.value = networkRoomCode;
+                    roomInput.readOnly = true;
                 }
-                const share=document.getElementById('roomShare');
-                if(share)share.hidden=false;
+                const share = document.getElementById('roomShare');
+                if (share) share.hidden = false;
                 setMode('online');
                 setOnlineStatus('Connecting to match service…');
                 syncOnlineOverlay();
-                try{
-                    await loadPeerLibrary();
-                    networkPeer=new window.Peer(`five-arrows-${networkRoomCode.toLowerCase()}`,{
-                        config:{iceServers:[
-                            {urls:'stun:stun.l.google.com:19302'},
-                            {urls:'stun:stun1.l.google.com:19302'},
-                            {urls:'stun:stun2.l.google.com:19302'}
-                        ]}
+
+                const code = networkRoomCode;
+                const hostTopic = `fivearrows/rooms/${code}/host`;
+                const guestTopic = `fivearrows/rooms/${code}/guest`;
+
+                const rtc = new RTCPeerConnection({
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' }
+                    ]
+                });
+                networkRtc = rtc;
+
+                const channel = rtc.createDataChannel('five-arrows', { ordered: true });
+                attachDataChannel(channel, 'host');
+
+                signalingClient = new MiniMqttClient(BROKER_SERVERS);
+                signalingClient.onErrorCallback = () => {
+                    setOnlineStatus('Could not connect to match service. Check your internet.');
+                    syncOnlineOverlay();
+                };
+
+                signalingClient.onConnectCallback = () => {
+                    setOnlineStatus(`Room ${code} is ready. Share the code with your opponent.`);
+                    syncOnlineOverlay();
+
+                    signalingClient.subscribe(guestTopic, async msg => {
+                        if (!msg || typeof msg !== 'object') return;
+                        if (msg.type === 'hello') {
+                            try {
+                                const offer = await rtc.createOffer();
+                                await rtc.setLocalDescription(offer);
+                                signalingClient.publish(hostTopic, { type: 'offer', sdp: rtc.localDescription.sdp });
+                            } catch (e) {}
+                        } else if (msg.type === 'answer') {
+                            try {
+                                if (rtc.signalingState === 'have-local-offer') {
+                                    await rtc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: msg.sdp }));
+                                }
+                            } catch (e) {}
+                        } else if (msg.type === 'candidate' && msg.candidate) {
+                            try {
+                                await rtc.addIceCandidate(new RTCIceCandidate(msg.candidate));
+                            } catch (e) {}
+                        }
                     });
-                    networkPeer.on('open',()=>{
-                        setOnlineStatus(`Room ${networkRoomCode} is ready. Share the code with your opponent.`);
-                        syncOnlineOverlay();
-                    });
-                    networkPeer.on('connection',connection=>{
-                        if(networkConnection&&networkConnection.open){connection.close();return;}
-                        attachNetworkConnection(connection,'host');
-                    });
-                    networkPeer.on('error',handlePeerError);
-                }catch(error){
-                    setOnlineStatus(error.message||'Could not create a room.');
-                }
-                syncOnlineOverlay();
+
+                    rtc.onicecandidate = event => {
+                        if (event.candidate && signalingClient) {
+                            signalingClient.publish(hostTopic, { type: 'candidate', candidate: event.candidate });
+                        }
+                    };
+                };
+
+                signalingClient.connect();
             }
 
             async function joinOnline() {
-                const roomInput=document.getElementById('roomCode');
-                const code=roomInput?roomInput.value.trim().toUpperCase():'';
-                if(!code||code.length<4){
+                const roomInput = document.getElementById('roomCode');
+                const code = roomInput ? roomInput.value.trim().toUpperCase() : '';
+                if (!code || code.length < 4) {
                     setOnlineStatus('Enter the room code from the host.');
-                    if(roomInput)roomInput.focus();
+                    if (roomInput) roomInput.focus();
                     return;
                 }
                 closeOnline();
-                mode='online';
-                networkRole='guest';
-                networkRoomCode=code;
-                if(roomInput){
-                    roomInput.value=code;
-                    roomInput.readOnly=false;
+                mode = 'online';
+                networkRole = 'guest';
+                networkRoomCode = code;
+                if (roomInput) {
+                    roomInput.value = code;
+                    roomInput.readOnly = false;
                 }
                 setMode('online');
                 setOnlineStatus(`Connecting to room ${code}…`);
                 syncOnlineOverlay();
-                try{
-                    await loadPeerLibrary();
-                    networkPeer=new window.Peer({
-                        config:{iceServers:[
-                            {urls:'stun:stun.l.google.com:19302'},
-                            {urls:'stun:stun1.l.google.com:19302'},
-                            {urls:'stun:stun2.l.google.com:19302'}
-                        ]}
+
+                const hostTopic = `fivearrows/rooms/${code}/host`;
+                const guestTopic = `fivearrows/rooms/${code}/guest`;
+
+                const rtc = new RTCPeerConnection({
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' }
+                    ]
+                });
+                networkRtc = rtc;
+
+                rtc.ondatachannel = event => {
+                    attachDataChannel(event.channel, 'guest');
+                };
+
+                const pendingCandidates = [];
+
+                signalingClient = new MiniMqttClient(BROKER_SERVERS);
+                signalingClient.onErrorCallback = () => {
+                    setOnlineStatus('Could not connect to match service. Check your internet.');
+                    syncOnlineOverlay();
+                };
+
+                let helloInterval = null;
+
+                signalingClient.onConnectCallback = () => {
+                    setOnlineStatus(`Connected. Waiting for host in room ${code}…`);
+                    syncOnlineOverlay();
+
+                    signalingClient.subscribe(hostTopic, async msg => {
+                        if (!msg || typeof msg !== 'object') return;
+                        if (msg.type === 'offer') {
+                            clearInterval(helloInterval);
+                            try {
+                                await rtc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: msg.sdp }));
+                                while (pendingCandidates.length) {
+                                    const cand = pendingCandidates.shift();
+                                    await rtc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+                                }
+                                const answer = await rtc.createAnswer();
+                                await rtc.setLocalDescription(answer);
+                                signalingClient.publish(guestTopic, { type: 'answer', sdp: rtc.localDescription.sdp });
+                                setOnlineStatus('Exchanging connection data…');
+                            } catch (e) {
+                                setOnlineStatus('Could not establish connection with host.');
+                            }
+                        } else if (msg.type === 'candidate' && msg.candidate) {
+                            if (rtc.remoteDescription && rtc.remoteDescription.type) {
+                                try {
+                                    await rtc.addIceCandidate(new RTCIceCandidate(msg.candidate));
+                                } catch (e) {}
+                            } else {
+                                pendingCandidates.push(msg.candidate);
+                            }
+                        }
                     });
-                    networkPeer.on('open',()=>{
-                        const connection=networkPeer.connect(`five-arrows-${code.toLowerCase()}`,{reliable:true});
-                        attachNetworkConnection(connection,'guest');
-                    });
-                    networkPeer.on('error',handlePeerError);
-                }catch(error){
-                    setOnlineStatus(error.message||'Could not connect to the room.');
-                }
-                syncOnlineOverlay();
+
+                    rtc.onicecandidate = event => {
+                        if (event.candidate && signalingClient) {
+                            signalingClient.publish(guestTopic, { type: 'candidate', candidate: event.candidate });
+                        }
+                    };
+
+                    signalingClient.publish(guestTopic, { type: 'hello' });
+                    helloInterval = setInterval(() => {
+                        if (signalingClient && !rtc.remoteDescription) {
+                            signalingClient.publish(guestTopic, { type: 'hello' });
+                        } else {
+                            clearInterval(helloInterval);
+                        }
+                    }, 1500);
+                };
+
+                signalingClient.connect();
             }
 
             function createNetworkState() {
