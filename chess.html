@@ -1349,7 +1349,28 @@
             makeMove(move, isSimulated = false) {
                 const prevState = this.cloneState();
                 const movingPiece = this.board[move.from];
+                if (!movingPiece) return null;
                 const capturedPiece = this.board[move.to];
+
+                // Auto-detect castling if not explicitly flagged
+                if (!move.isCastling && movingPiece.type === 'k') {
+                    if (movingPiece.color === 'w') {
+                        if (move.from === 60 && (move.to === 62 || move.to === 58)) {
+                            move.isCastling = true;
+                        }
+                    } else if (movingPiece.color === 'b') {
+                        if (move.from === 4 && (move.to === 6 || move.to === 2)) {
+                            move.isCastling = true;
+                        }
+                    }
+                }
+
+                // Auto-detect en passant if not explicitly flagged
+                if (!move.isEnPassant && movingPiece.type === 'p') {
+                    if (move.to === this.enPassant && Math.abs((move.from % 8) - (move.to % 8)) === 1) {
+                        move.isEnPassant = true;
+                    }
+                }
 
                 const record = {
                     move,
@@ -1361,7 +1382,7 @@
                 // En passant
                 if (move.isEnPassant) {
                     const epSq = movingPiece.color === 'w' ? move.to + 8 : move.to - 8;
-                    record.epCapturedPiece = { ...this.board[epSq] };
+                    record.epCapturedPiece = this.board[epSq] ? { ...this.board[epSq] } : null;
                     record.epCaptureSq = epSq;
                     this.board[epSq] = null;
                 }
@@ -1452,7 +1473,7 @@
                 const { move, piece, captured, prevState, epCapturedPiece, epCaptureSq } = record;
 
                 this.turn = prevState.turn;
-                this.castling = prevState.castling;
+                this.castling = { ...prevState.castling };
                 this.enPassant = prevState.enPassant;
                 this.halfmoveClock = prevState.halfmoveClock;
                 this.fullmoveNumber = prevState.fullmoveNumber;
@@ -1494,29 +1515,29 @@
 
             toSAN(record) {
                 const { move, piece } = record;
-                if (move.isCastling) {
-                    return move.to === 62 || move.to === 6 ? 'O-O' : 'O-O-O';
-                }
-
-                const files = 'abcdefgh';
-                const ranks = '87654321';
-                const destFile = files[move.to % 8];
-                const destRank = ranks[Math.floor(move.to / 8)];
-                const isCapture = record.captured || move.isEnPassant;
-
                 let san = '';
-                if (piece.type === 'p') {
-                    if (isCapture) {
-                        san += files[move.from % 8] + 'x';
-                    }
-                    san += destFile + destRank;
-                    if (move.promotion) {
-                        san += '=' + move.promotion.toUpperCase();
-                    }
+                if (move.isCastling) {
+                    san = (move.to === 62 || move.to === 6) ? 'O-O' : 'O-O-O';
                 } else {
-                    san += piece.type.toUpperCase();
-                    if (isCapture) san += 'x';
-                    san += destFile + destRank;
+                    const files = 'abcdefgh';
+                    const ranks = '87654321';
+                    const destFile = files[move.to % 8];
+                    const destRank = ranks[Math.floor(move.to / 8)];
+                    const isCapture = record.captured || move.isEnPassant;
+
+                    if (piece.type === 'p') {
+                        if (isCapture) {
+                            san += files[move.from % 8] + 'x';
+                        }
+                        san += destFile + destRank;
+                        if (move.promotion) {
+                            san += '=' + move.promotion.toUpperCase();
+                        }
+                    } else {
+                        san += piece.type.toUpperCase();
+                        if (isCapture) san += 'x';
+                        san += destFile + destRank;
+                    }
                 }
 
                 if (this.isKingInCheck(this.turn)) {
@@ -2213,9 +2234,10 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const roomParam = urlParams.get('room');
                 if (roomParam && roomParam.length >= 4) {
+                    this.roomCode = roomParam.toUpperCase();
                     this.switchMode('online');
-                    document.getElementById('joinCodeInput').value = roomParam.toUpperCase();
-                    setTimeout(() => this.joinOnlineRoom(roomParam.toUpperCase()), 500);
+                    document.getElementById('joinCodeInput').value = this.roomCode;
+                    this.joinOnlineRoom(this.roomCode);
                 }
             }
 
@@ -2376,6 +2398,7 @@
                         this.mqtt.destroy();
                         this.mqtt = null;
                     }
+                    this.roomCode = null;
                 }
 
                 this.resetMatch();
@@ -2419,7 +2442,20 @@
 
                 const piece = this.engine.board[sq];
                 if (this.selectedSq !== -1) {
-                    const legal = this.legalMovesFromSelected.find(m => m.to === sq);
+                    let legal = this.legalMovesFromSelected.find(m => m.to === sq);
+                    // Also support castling by clicking the friendly rook directly
+                    if (!legal) {
+                        const selPiece = this.engine.board[this.selectedSq];
+                        if (selPiece && selPiece.type === 'k') {
+                            if (selPiece.color === 'w') {
+                                if (sq === 63) legal = this.legalMovesFromSelected.find(m => m.from === 60 && m.to === 62 && m.isCastling);
+                                else if (sq === 56) legal = this.legalMovesFromSelected.find(m => m.from === 60 && m.to === 58 && m.isCastling);
+                            } else if (selPiece.color === 'b') {
+                                if (sq === 7) legal = this.legalMovesFromSelected.find(m => m.from === 4 && m.to === 6 && m.isCastling);
+                                else if (sq === 0) legal = this.legalMovesFromSelected.find(m => m.from === 4 && m.to === 2 && m.isCastling);
+                            }
+                        }
+                    }
                     if (legal) {
                         this.handlePlayerMove(legal);
                         return;
@@ -2461,7 +2497,20 @@
                 if (this.dragState) {
                     const targetSq = this.xyToSq(e.clientX, e.clientY);
                     if (targetSq !== -1 && targetSq !== this.dragState.fromSq) {
-                        const legal = this.legalMovesFromSelected.find(m => m.to === targetSq);
+                        let legal = this.legalMovesFromSelected.find(m => m.to === targetSq);
+                        // Also support castling by dropping the king onto the friendly rook
+                        if (!legal) {
+                            const selPiece = this.engine.board[this.dragState.fromSq];
+                            if (selPiece && selPiece.type === 'k') {
+                                if (selPiece.color === 'w') {
+                                    if (targetSq === 63) legal = this.legalMovesFromSelected.find(m => m.from === 60 && m.to === 62 && m.isCastling);
+                                    else if (targetSq === 56) legal = this.legalMovesFromSelected.find(m => m.from === 60 && m.to === 58 && m.isCastling);
+                                } else if (selPiece.color === 'b') {
+                                    if (targetSq === 7) legal = this.legalMovesFromSelected.find(m => m.from === 4 && m.to === 6 && m.isCastling);
+                                    else if (targetSq === 0) legal = this.legalMovesFromSelected.find(m => m.from === 4 && m.to === 2 && m.isCastling);
+                                }
+                            }
+                        }
                         if (legal) {
                             this.handlePlayerMove(legal);
                         }
@@ -2499,24 +2548,27 @@
                 };
 
                 const record = this.engine.makeMove(move);
+                if (!record) return;
                 this.lastMoveRecord = record;
                 this.selectedSq = -1;
                 this.legalMovesFromSelected = [];
 
                 if (isCapture) {
                     this.audio.playCapture();
-                } else if (move.isCastling) {
+                } else if (record.move.isCastling) {
                     this.audio.playCastling();
                 } else {
                     this.audio.playMove();
                 }
 
-                if (this.mode === 'online' && this.mqtt) {
+                if (this.mode === 'online' && this.mqtt && this.roomCode) {
                     this.mqtt.publish(`chess/room/${this.roomCode}/move`, {
                         type: 'move',
                         from: move.from,
                         to: move.to,
                         promotion: move.promotion,
+                        isCastling: !!record.move.isCastling,
+                        isEnPassant: !!record.move.isEnPassant,
                         color: record.piece.color
                     });
                 }
@@ -2592,13 +2644,17 @@
                 this.render();
             }
 
-            resetMatch() {
+            resetMatch(notifyPeer = true) {
                 this.engine.init();
                 this.lastMoveRecord = null;
                 this.selectedSq = -1;
                 this.legalMovesFromSelected = [];
                 this.updateUI();
                 this.render();
+
+                if (notifyPeer && this.mode === 'online' && this.mqtt && this.roomCode) {
+                    this.mqtt.publish(`chess/room/${this.roomCode}/move`, { type: 'reset' });
+                }
             }
 
             showBanner(text) {
@@ -2733,7 +2789,9 @@
                 for (let i = 0; i < 6; i++) code += alphabet[Math.floor(Math.random() * alphabet.length)];
                 this.roomCode = code;
                 this.myColor = 'w';
+                this.flipped = false;
                 document.getElementById('myRoomCode').textContent = code;
+                this.resetMatch(false);
                 this.initMqttSignaling(code);
             }
 
@@ -2742,6 +2800,7 @@
                 this.myColor = 'b';
                 this.flipped = true;
                 document.getElementById('myRoomCode').textContent = code;
+                this.resetMatch(false);
                 this.initMqttSignaling(code);
             }
 
@@ -2758,10 +2817,10 @@
 
                     this.mqtt.subscribe(`chess/room/${code}/move`, (data) => {
                         if (data.type === 'move' && data.color !== this.myColor) {
-                            this.engine.makeMove({ from: data.from, to: data.to, promotion: data.promotion });
-                            this.updateUI();
-                            this.audio.playMove();
-                            this.render();
+                            this.handleRemoteMove(data);
+                        } else if (data.type === 'reset') {
+                            this.resetMatch(false);
+                            this.showBanner('MATCH RESTARTED');
                         }
                     });
 
@@ -2770,6 +2829,65 @@
                     });
                 };
                 this.mqtt.connect();
+            }
+
+            handleRemoteMove(data) {
+                if (data.type !== 'move' || data.color === this.myColor) return;
+                if (this.engine.turn !== data.color) return;
+
+                // Match with legal moves to preserve engine move flags (isCastling, isEnPassant)
+                const legalMoves = this.engine.getLegalMoves(this.engine.turn);
+                let move = legalMoves.find(m => m.from === data.from && m.to === data.to && (!data.promotion || m.promotion === data.promotion));
+                if (!move) {
+                    move = {
+                        from: data.from,
+                        to: data.to,
+                        promotion: data.promotion,
+                        isCastling: !!data.isCastling,
+                        isEnPassant: !!data.isEnPassant
+                    };
+                } else {
+                    if (data.isCastling) move.isCastling = true;
+                    if (data.isEnPassant) move.isEnPassant = true;
+                }
+
+                const fromPiece = this.engine.board[move.from];
+                const destPiece = this.engine.board[move.to];
+                const isCapture = destPiece || move.isEnPassant;
+
+                this.animatingPiece = {
+                    fromSq: move.from,
+                    toSq: move.to,
+                    piece: fromPiece,
+                    progress: 0
+                };
+
+                const record = this.engine.makeMove(move);
+                if (!record) return;
+                this.lastMoveRecord = record;
+                this.selectedSq = -1;
+                this.legalMovesFromSelected = [];
+                this.dragState = null;
+
+                if (isCapture) {
+                    this.audio.playCapture();
+                } else if (record.move.isCastling) {
+                    this.audio.playCastling();
+                } else {
+                    this.audio.playMove();
+                }
+
+                this.updateUI();
+
+                this.animateMove(() => {
+                    const status = this.engine.getGameStatus();
+                    if (status.over) {
+                        this.handleGameOver(status);
+                    } else if (status.inCheck) {
+                        this.audio.playCheck();
+                        this.showBanner('CHECK!');
+                    }
+                });
             }
 
             copyOnlineLink() {
@@ -2909,6 +3027,22 @@
                             ctx.fill();
                         }
                         ctx.restore();
+
+                        // Visual cue on the rook square for castling
+                        if (m.isCastling) {
+                            const rookSq = m.to === 62 ? 63 : m.to === 58 ? 56 : m.to === 6 ? 7 : 0;
+                            const rPos = this.sqToXY(rookSq);
+                            const rx = rPos.x + ts / 2;
+                            const ry = rPos.y + ts / 2;
+                            ctx.save();
+                            ctx.strokeStyle = 'rgba(114, 224, 203, 0.7)';
+                            ctx.lineWidth = 2.5;
+                            ctx.setLineDash([4, 4]);
+                            ctx.beginPath();
+                            ctx.arc(rx, ry, ts * 0.38, 0, Math.PI * 2);
+                            ctx.stroke();
+                            ctx.restore();
+                        }
                     });
                 }
             }
