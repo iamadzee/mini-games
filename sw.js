@@ -1,5 +1,5 @@
-const CACHE_NAME = 'mini-games-arcade-v11';
-const APP_FILES = ['.', 'index.html', 'ricochet.html', 'duel.html', 'manifest.json', 'icon.svg', 'sw.js'];
+const CACHE_NAME = 'mini-games-arcade-v13';
+const APP_FILES = ['.', 'index.html', 'ricochet.html', 'duel.html', 'chess.html', 'manifest.json', 'icon.svg', 'sw.js'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

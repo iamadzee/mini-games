@@ -126,11 +126,24 @@
         .section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
         .section-head h2 { margin: 0; font-size: .74rem; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
         .section-index { color: var(--muted); font: 700 .65rem ui-monospace, monospace; }
-        .mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-        .mode-switch button { min-height: 35px; padding: 6px; font-size: .72rem; }
+        .mode-switch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+        .mode-switch button { min-height: 35px; padding: 6px; font-size: .7rem; }
         .mode-switch button[aria-pressed="true"] { color: #10131c; background: var(--cyan); border-color: var(--cyan); }
         .field { display: grid; gap: 6px; margin-top: 12px; }
         .field label { color: var(--muted); font-size: .7rem; font-weight: 700; }
+        .online-field { display: grid; gap: 7px; margin-top: 12px; }
+        .online-field label { color: var(--muted); font-size: .7rem; font-weight: 700; }
+        .room-controls { display: grid; grid-template-columns: 1fr minmax(84px, 1.1fr) 1fr; gap: 5px; }
+        .room-controls button { min-width: 0; padding-inline: 5px; font-size: .68rem; }
+        .room-controls input { width: 100%; min-width: 0; min-height: 36px; padding: 6px; border: 1px solid var(--line); border-radius: 5px; background: var(--field); color: var(--ink); font: 800 .8rem ui-monospace, monospace; text-align: center; text-transform: uppercase; letter-spacing: .1em; }
+        .room-share { display: flex; gap: 6px; }
+        .room-share button { flex: 1; font-size: .66rem; }
+        .online-status, .online-note { margin: 0; color: var(--muted); font-size: .65rem; line-height: 1.4; }
+        .online-status { color: var(--cyan); }
+        @media (max-width: 380px) {
+            .room-controls { grid-template-columns: 1fr 1fr; }
+            .room-controls input { grid-column: 1 / -1; order: -1; }
+        }
         .muted-note { margin: 9px 0 0; color: var(--muted); font-size: .65rem; line-height: 1.45; }
         select { width: 100%; min-height: 36px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 5px; background: var(--field); color: var(--ink); }
         .control-list { display: grid; gap: 8px; }
@@ -239,6 +252,7 @@
                     <div class="mode-switch" role="group" aria-label="Game mode">
                         <button id="twoPlayerMode" type="button" aria-pressed="true">Two player</button>
                         <button id="aiMode" type="button" aria-pressed="false">Vs AI</button>
+                        <button id="onlineMode" type="button" aria-pressed="false">Online</button>
                     </div>
                     <div class="field" id="difficultyField" hidden>
                         <label for="difficulty">Opponent</label>
@@ -247,6 +261,20 @@
                             <option value="medium" selected>Medium</option>
                             <option value="high">High</option>
                         </select>
+                    </div>
+                    <div class="online-field" id="onlineField" hidden>
+                        <label for="roomCode">Room code</label>
+                        <div class="room-controls">
+                            <button id="hostRoom" type="button">Host room</button>
+                            <input id="roomCode" type="text" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="6-CHAR CODE" aria-label="Six character room code">
+                            <button id="joinRoom" type="button">Join</button>
+                        </div>
+                        <div class="room-share" id="roomShare" hidden>
+                            <button id="copyRoom" type="button">Copy code</button>
+                            <button id="copyLink" type="button">Copy link</button>
+                        </div>
+                        <p class="online-status" id="onlineStatus" aria-live="polite">Host a room or enter a friend’s code.</p>
+                        <p class="online-note">Host creates a room code. Guest enters the code to connect.</p>
                     </div>
                     <div class="field">
                         <label for="soundToggle">Arena audio</label>
@@ -300,8 +328,16 @@
             const world = { width: 960, height: 600, margin: 26 };
             const matchTarget = 3;
             const keys = new Set();
-            const modeButtons = [document.getElementById('twoPlayerMode'), document.getElementById('aiMode')];
+            const modeButtons = [document.getElementById('twoPlayerMode'), document.getElementById('aiMode'), document.getElementById('onlineMode')];
             const modeState = { value: 'two' };
+            let networkRtc = null;
+            let networkConnection = null;
+            let networkRole = null;
+            let networkRoomCode = '';
+            let signalingClient = null;
+            let networkSnapshotTimer = 0;
+            let guestLastMx = 0;
+            let guestLastMy = 0;
             const palette = { cyan: '#66e4d1', coral: '#ff8068', gold: '#f5c46a', wall: '#3a4653', floor: '#101720' };
             const staticBlocks = [
                 { cx: 405, cy: 190, w: 90, h: 16, angle: 0 }, { cx: 555, cy: 190, w: 90, h: 16, angle: 0 },
@@ -397,7 +433,8 @@
                     invulnerable: 0, color: id === 0 ? palette.cyan : palette.coral,
                     ai: id === 1 && modeState.value === 'ai', aiThink: .2, aiFire: 1, aiGate: 2.5,
                     aiMoveX: 0, aiMoveY: 0, aiStuckTime: 0, aiProgressCheck: 0,
-                    aiLastX: x, aiLastY: y, aiEscapeTime: 0, flash: 0, dryClick: 0
+                    aiLastX: x, aiLastY: y, aiEscapeTime: 0, flash: 0, dryClick: 0,
+                    onlineMoveX: 0, onlineMoveY: 0
                 };
             }
 
@@ -419,6 +456,7 @@
                 overlayButton.textContent = actionLabel;
                 overlayAction = action;
                 overlay.hidden = false;
+                syncOnlineOverlay();
             }
 
             function resizeCanvas() {
@@ -450,13 +488,14 @@
                 phase = 'round';
                 overlay.hidden = true;
                 canvas.focus({ preventScroll: true });
-                document.getElementById('pauseBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = modeState.value === 'online';
                 document.getElementById('pauseBtn').setAttribute('aria-label', 'Pause game');
                 document.getElementById('roundLabel').textContent = `ROUND ${roundNumber}`;
-                document.getElementById('playerTwoName').textContent = modeState.value === 'ai' ? 'Rival AI' : 'Player Two';
+                document.getElementById('playerTwoName').textContent = modeState.value === 'ai' ? 'Rival AI' : modeState.value === 'online' ? 'Online Player' : 'Player Two';
                 updateHud();
                 setEvent('Eight rounds of fire. No shot expires.', 'Round live.');
                 draw();
+                if (modeState.value === 'online' && networkRole === 'host') sendNetworkState();
             }
 
             function endRound(winnerId) {
@@ -467,7 +506,7 @@
                 noiseBurst(.22, .08, 620);
                 sweepTone(170, 45, .34, 'sawtooth', .085);
                 tone(winnerId === 0 ? 660 : 440, .22, 'sine', .055);
-                const label = winnerId === 0 ? 'Player One' : (modeState.value === 'ai' ? 'Rival AI' : 'Player Two');
+                const label = winnerId === 0 ? 'Player One' : (modeState.value === 'ai' ? 'Rival AI' : modeState.value === 'online' ? 'Online Player' : 'Player Two');
                 const matchOver = scores[winnerId] >= matchTarget;
                 if (matchOver) {
                     showOverlay('Match complete', `${label} owns the maze.`, `Final score ${scores[0]} : ${scores[1]}. Run it back when you are ready.`, 'Rematch', startMatch);
@@ -481,9 +520,11 @@
                 }
                 document.getElementById('pauseBtn').disabled = true;
                 draw();
+                if (modeState.value === 'online' && networkRole === 'host') sendNetworkState();
             }
 
             function togglePause() {
+                if (modeState.value === 'online') return;
                 if (phase === 'round') {
                     pausedFrom = phase;
                     phase = 'paused';
@@ -619,6 +660,7 @@
                 sweepTone(player.id === 0 ? 580 : 460, 150, .11, 'square', .035);
                 setEvent(`${bullets.length} live rounds in the maze.`, 'Shot fired.');
                 updateHud();
+                if (modeState.value === 'online' && networkRole === 'host') sendNetworkState();
             }
 
             function ricochet(bullet, nx, ny, hitX, hitY, audible = true) {
@@ -733,6 +775,7 @@
                 noiseBurst(.16, .075, 2400);
                 sweepTone(960, 150, .2, 'sawtooth', .065);
                 tone(125, .13, 'sine', .045);
+                if (modeState.value === 'online' && networkRole === 'host') sendNetworkState();
             }
 
             function activateGate(player) {
@@ -749,6 +792,7 @@
                 noiseBurst(.34, .09, 420);
                 sweepTone(245, 48, .48, 'triangle', .09);
                 setEvent('Four temporary gates lock the chamber for three seconds.', 'Pressure seal active.');
+                if (modeState.value === 'online' && networkRole === 'host') sendNetworkState();
                 return true;
             }
 
@@ -939,6 +983,9 @@
                     updateAI(player, opponent, dt);
                     mx = player.aiMoveX;
                     my = player.aiMoveY;
+                } else if (modeState.value === 'online' && player.id === 1) {
+                    mx = player.onlineMoveX || 0;
+                    my = player.onlineMoveY || 0;
                 } else {
                     const isFirst = player.id === 0;
                     mx = Number(keys.has(isFirst ? 'd' : 'arrowright')) - Number(keys.has(isFirst ? 'a' : 'arrowleft'));
@@ -951,6 +998,13 @@
             function update(dt) {
                 if (phase !== 'round') return;
                 roundElapsed += dt;
+                if (modeState.value === 'online' && networkRole === 'host' && networkIsOpen()) {
+                    networkSnapshotTimer += dt;
+                    if (networkSnapshotTimer >= 0.05) {
+                        networkSnapshotTimer = 0;
+                        sendNetworkState();
+                    }
+                }
                 gateTimer = Math.max(0, gateTimer - dt);
                 gateCooldown = Math.max(0, gateCooldown - dt);
                 ammoTimer -= dt;
@@ -1157,14 +1211,593 @@
                 requestAnimationFrame(frame);
             }
 
+            function setOnlineStatus(message) {
+                const el = document.getElementById('onlineStatus');
+                if (el) el.textContent = message;
+            }
+
+            function syncOnlineOverlay() {
+                if (modeState.value !== 'online') {
+                    overlayButton.disabled = false;
+                    return;
+                }
+                const connected = networkIsOpen();
+                const host = networkRole === 'host';
+                overlayButton.disabled = !connected || !host;
+                if (!connected) {
+                    overlayButton.textContent = networkRole === 'host' ? 'Waiting for opponent…' : networkRole === 'guest' ? 'Connecting…' : 'Host or join a room';
+                } else if (host) {
+                    overlayButton.textContent = phase === 'menu' ? 'Enter the maze' : scores.some(s => s >= matchTarget) ? 'Rematch' : 'Next round';
+                } else {
+                    overlayButton.textContent = 'Waiting for host…';
+                }
+            }
+
+            function localPlayerId() {
+                return networkRole === 'guest' ? 1 : 0;
+            }
+
+            function networkIsOpen() {
+                return Boolean(networkConnection && networkConnection.readyState === 'open');
+            }
+
+            function sendNetwork(message) {
+                if (networkIsOpen()) {
+                    try { networkConnection.send(JSON.stringify(message)); }
+                    catch {}
+                }
+            }
+
+            const BROKER_SERVERS = [
+                'wss://broker.hivemq.com:8884/mqtt',
+                'wss://broker.emqx.io:8084/mqtt'
+            ];
+
+            function encodeVarInt(num) {
+                const bytes = [];
+                do {
+                    let byte = num % 128;
+                    num = Math.floor(num / 128);
+                    if (num > 0) byte |= 0x80;
+                    bytes.push(byte);
+                } while (num > 0);
+                return bytes;
+            }
+
+            function decodeVarInt(data, offset = 1) {
+                let multiplier = 1, value = 0, bytesRead = 0, digit;
+                do {
+                    digit = data[offset + bytesRead++];
+                    value += (digit & 127) * multiplier;
+                    multiplier *= 128;
+                } while ((digit & 128) !== 0);
+                return { value, length: bytesRead };
+            }
+
+            function encodeString(str) {
+                const encoded = new TextEncoder().encode(str);
+                const len = encoded.length;
+                return [Math.floor(len / 256), len % 256, ...encoded];
+            }
+
+            function createConnectPacket(clientId) {
+                const varHeader = [0x00, 0x04, 0x4d, 0x51, 0x54, 0x54, 0x04, 0x02, 0x00, 0x3c];
+                const payload = encodeString(clientId);
+                const remaining = [...varHeader, ...payload];
+                return new Uint8Array([0x10, ...encodeVarInt(remaining.length), ...remaining]);
+            }
+
+            function createSubscribePacket(topic, packetId = 1) {
+                const varHeader = [Math.floor(packetId / 256), packetId % 256];
+                const payload = [...encodeString(topic), 0x00];
+                const remaining = [...varHeader, ...payload];
+                return new Uint8Array([0x82, ...encodeVarInt(remaining.length), ...remaining]);
+            }
+
+            function createPublishPacket(topic, payloadStr) {
+                const varHeader = encodeString(topic);
+                const payload = new TextEncoder().encode(payloadStr);
+                const remaining = [...varHeader, ...payload];
+                return new Uint8Array([0x30, ...encodeVarInt(remaining.length), ...remaining]);
+            }
+
+            class MiniMqttClient {
+                constructor(urls) {
+                    this.urls = Array.isArray(urls) ? urls : [urls];
+                    this.urlIndex = 0;
+                    this.ws = null;
+                    this.clientId = 'rc_' + Math.random().toString(36).slice(2, 10);
+                    this.handlers = new Map();
+                    this.connected = false;
+                    this.closed = false;
+                    this.pingTimer = null;
+                    this.connectTimer = null;
+                    this.onConnectCallback = null;
+                    this.onErrorCallback = null;
+                }
+
+                connect() {
+                    if (this.closed) return;
+                    const url = this.urls[this.urlIndex % this.urls.length];
+                    try {
+                        this.ws = new WebSocket(url, 'mqtt');
+                        this.ws.binaryType = 'arraybuffer';
+                    } catch (err) {
+                        this.tryNextUrl(err);
+                        return;
+                    }
+
+                    this.connectTimer = setTimeout(() => {
+                        if (!this.connected) {
+                            this.tryNextUrl(new Error('Signaling connection timed out.'));
+                        }
+                    }, 5000);
+
+                    this.ws.onopen = () => {
+                        this.ws.send(createConnectPacket(this.clientId));
+                    };
+
+                    this.ws.onmessage = (event) => {
+                        this.handleData(event.data);
+                    };
+
+                    this.ws.onerror = (err) => {
+                        if (!this.connected) this.tryNextUrl(err);
+                    };
+
+                    this.ws.onclose = () => {
+                        clearInterval(this.pingTimer);
+                        if (!this.closed && !this.connected) {
+                            this.tryNextUrl(new Error('Signaling closed.'));
+                        }
+                    };
+                }
+
+                tryNextUrl(err) {
+                    clearTimeout(this.connectTimer);
+                    clearInterval(this.pingTimer);
+                    if (this.ws) {
+                        try { this.ws.close(); } catch {}
+                        this.ws = null;
+                    }
+                    this.urlIndex++;
+                    if (this.urlIndex < this.urls.length) {
+                        this.connect();
+                    } else if (this.onErrorCallback) {
+                        this.onErrorCallback(err || new Error('Could not connect to online match service.'));
+                    }
+                }
+
+                handleData(buffer) {
+                    const data = new Uint8Array(buffer);
+                    let index = 0;
+                    while (index < data.length) {
+                        const firstByte = data[index];
+                        const type = firstByte >> 4;
+                        const qos = (firstByte >> 1) & 0x03;
+                        const { value: remLen, length: varLen } = decodeVarInt(data, index + 1);
+                        const packetEnd = index + 1 + varLen + remLen;
+                        if (packetEnd > data.length) break;
+
+                        if (type === 2) {
+                            clearTimeout(this.connectTimer);
+                            const returnCode = data[index + 3];
+                            if (returnCode === 0) {
+                                this.connected = true;
+                                this.pingTimer = setInterval(() => {
+                                    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                                        this.ws.send(new Uint8Array([0xc0, 0x00]));
+                                    }
+                                }, 25000);
+                                if (this.onConnectCallback) this.onConnectCallback();
+                            } else {
+                                this.tryNextUrl(new Error('Connection rejected by broker.'));
+                                return;
+                            }
+                        } else if (type === 3) {
+                            let offset = index + 1 + varLen;
+                            const topicLen = (data[offset] << 8) | data[offset + 1];
+                            offset += 2;
+                            const topic = new TextDecoder().decode(data.slice(offset, offset + topicLen));
+                            offset += topicLen;
+                            if (qos > 0) offset += 2;
+                            const payloadStr = new TextDecoder().decode(data.slice(offset, packetEnd));
+                            const callback = this.handlers.get(topic);
+                            if (callback) {
+                                try {
+                                    callback(JSON.parse(payloadStr), topic);
+                                } catch {
+                                    callback(payloadStr, topic);
+                                }
+                            }
+                        }
+                        index = packetEnd;
+                    }
+                }
+
+                subscribe(topic, callback) {
+                    this.handlers.set(topic, callback);
+                    if (this.ws && this.ws.readyState === WebSocket.OPEN && this.connected) {
+                        this.ws.send(createSubscribePacket(topic));
+                    }
+                }
+
+                publish(topic, payload) {
+                    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+                    const str = typeof payload === 'string' ? payload : JSON.stringify(payload);
+                    this.ws.send(createPublishPacket(topic, str));
+                }
+
+                close() {
+                    this.closed = true;
+                    clearTimeout(this.connectTimer);
+                    clearInterval(this.pingTimer);
+                    if (this.ws) {
+                        try { this.ws.close(); } catch {}
+                        this.ws = null;
+                    }
+                    this.handlers.clear();
+                }
+            }
+
+            function randomRoomCode() {
+                const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                const values = new Uint8Array(6);
+                crypto.getRandomValues(values);
+                return Array.from(values, value => alphabet[value % alphabet.length]).join('');
+            }
+
+            function closeOnline() {
+                if (signalingClient) {
+                    try { signalingClient.close(); } catch {}
+                    signalingClient = null;
+                }
+                const connection = networkConnection;
+                const rtc = networkRtc;
+                networkConnection = null;
+                networkRtc = null;
+                networkRole = null;
+                networkRoomCode = '';
+                if (connection) { try { connection.close(); } catch {} }
+                if (rtc) { try { rtc.close(); } catch {} }
+                const roomInput = document.getElementById('roomCode');
+                if (roomInput) roomInput.readOnly = false;
+                const share = document.getElementById('roomShare');
+                if (share) share.hidden = true;
+            }
+
+            function attachDataChannel(channel, role) {
+                networkConnection = channel;
+                networkRole = role;
+                setMode('online');
+                channel.onopen = () => {
+                    if (signalingClient) {
+                        try { signalingClient.close(); } catch {}
+                        signalingClient = null;
+                    }
+                    setOnlineStatus(role === 'host' ? 'Opponent connected. Enter the maze when ready.' : 'Connected. Waiting for host to start.');
+                    syncOnlineOverlay();
+                    if (role === 'host') sendNetworkState();
+                    else sendNetwork({ type: 'hello' });
+                };
+                channel.onmessage = event => {
+                    try {
+                        const message = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                        handleNetworkMessage(message);
+                    } catch {
+                        setOnlineStatus('Received invalid match data.');
+                    }
+                };
+                channel.onclose = () => {
+                    if (networkConnection !== channel) return;
+                    if (role === 'host' && players[1]) {
+                        players[1].onlineMoveX = 0;
+                        players[1].onlineMoveY = 0;
+                    }
+                    networkConnection = null;
+                    setOnlineStatus('Opponent disconnected. Enter a room code to reconnect.');
+                    syncOnlineOverlay();
+                };
+                channel.onerror = () => {
+                    setOnlineStatus('Direct connection error. Try reconnecting.');
+                    syncOnlineOverlay();
+                };
+                syncOnlineOverlay();
+            }
+
+            async function hostOnline() {
+                closeOnline();
+                setMode('online');
+                networkRole = 'host';
+                networkRoomCode = randomRoomCode();
+                const roomInput = document.getElementById('roomCode');
+                if (roomInput) {
+                    roomInput.value = networkRoomCode;
+                    roomInput.readOnly = true;
+                }
+                const share = document.getElementById('roomShare');
+                if (share) share.hidden = false;
+                setOnlineStatus('Connecting to match service…');
+                syncOnlineOverlay();
+
+                const code = networkRoomCode;
+                const hostTopic = `ricochet/rooms/${code}/host`;
+                const guestTopic = `ricochet/rooms/${code}/guest`;
+
+                const rtc = new RTCPeerConnection({
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' }
+                    ]
+                });
+                networkRtc = rtc;
+
+                const channel = rtc.createDataChannel('ricochet-duel', { ordered: true });
+                attachDataChannel(channel, 'host');
+
+                signalingClient = new MiniMqttClient(BROKER_SERVERS);
+                signalingClient.onErrorCallback = () => {
+                    setOnlineStatus('Could not connect to match service. Check your internet.');
+                    syncOnlineOverlay();
+                };
+
+                signalingClient.onConnectCallback = () => {
+                    setOnlineStatus(`Room ${code} is ready. Share the code with your opponent.`);
+                    syncOnlineOverlay();
+
+                    signalingClient.subscribe(guestTopic, async msg => {
+                        if (!msg || typeof msg !== 'object') return;
+                        if (msg.type === 'hello') {
+                            try {
+                                const offer = await rtc.createOffer();
+                                await rtc.setLocalDescription(offer);
+                                signalingClient.publish(hostTopic, { type: 'offer', sdp: rtc.localDescription.sdp });
+                            } catch (e) {}
+                        } else if (msg.type === 'answer') {
+                            try {
+                                if (rtc.signalingState === 'have-local-offer') {
+                                    await rtc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: msg.sdp }));
+                                }
+                            } catch (e) {}
+                        } else if (msg.type === 'candidate' && msg.candidate) {
+                            try {
+                                await rtc.addIceCandidate(new RTCIceCandidate(msg.candidate));
+                            } catch (e) {}
+                        }
+                    });
+
+                    rtc.onicecandidate = event => {
+                        if (event.candidate && signalingClient) {
+                            signalingClient.publish(hostTopic, { type: 'candidate', candidate: event.candidate });
+                        }
+                    };
+                };
+
+                signalingClient.connect();
+            }
+
+            async function joinOnline() {
+                const roomInput = document.getElementById('roomCode');
+                const code = roomInput ? roomInput.value.trim().toUpperCase() : '';
+                if (!code || code.length < 4) {
+                    setOnlineStatus('Enter the room code from the host.');
+                    if (roomInput) roomInput.focus();
+                    return;
+                }
+                closeOnline();
+                setMode('online');
+                networkRole = 'guest';
+                networkRoomCode = code;
+                if (roomInput) {
+                    roomInput.value = code;
+                    roomInput.readOnly = false;
+                }
+                setOnlineStatus(`Connecting to room ${code}…`);
+                syncOnlineOverlay();
+
+                const hostTopic = `ricochet/rooms/${code}/host`;
+                const guestTopic = `ricochet/rooms/${code}/guest`;
+
+                const rtc = new RTCPeerConnection({
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' }
+                    ]
+                });
+                networkRtc = rtc;
+
+                rtc.ondatachannel = event => {
+                    attachDataChannel(event.channel, 'guest');
+                };
+
+                const pendingCandidates = [];
+
+                signalingClient = new MiniMqttClient(BROKER_SERVERS);
+                signalingClient.onErrorCallback = () => {
+                    setOnlineStatus('Could not connect to match service. Check your internet.');
+                    syncOnlineOverlay();
+                };
+
+                let helloInterval = null;
+
+                signalingClient.onConnectCallback = () => {
+                    setOnlineStatus(`Connected. Waiting for host in room ${code}…`);
+                    syncOnlineOverlay();
+
+                    signalingClient.subscribe(hostTopic, async msg => {
+                        if (!msg || typeof msg !== 'object') return;
+                        if (msg.type === 'offer') {
+                            clearInterval(helloInterval);
+                            try {
+                                await rtc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: msg.sdp }));
+                                while (pendingCandidates.length) {
+                                    const cand = pendingCandidates.shift();
+                                    await rtc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+                                }
+                                const answer = await rtc.createAnswer();
+                                await rtc.setLocalDescription(answer);
+                                signalingClient.publish(guestTopic, { type: 'answer', sdp: rtc.localDescription.sdp });
+                                setOnlineStatus('Exchanging connection data…');
+                            } catch (e) {
+                                setOnlineStatus('Could not establish connection with host.');
+                            }
+                        } else if (msg.type === 'candidate' && msg.candidate) {
+                            if (rtc.remoteDescription && rtc.remoteDescription.type) {
+                                try {
+                                    await rtc.addIceCandidate(new RTCIceCandidate(msg.candidate));
+                                } catch (e) {}
+                            } else {
+                                pendingCandidates.push(msg.candidate);
+                            }
+                        }
+                    });
+
+                    rtc.onicecandidate = event => {
+                        if (event.candidate && signalingClient) {
+                            signalingClient.publish(guestTopic, { type: 'candidate', candidate: event.candidate });
+                        }
+                    };
+
+                    signalingClient.publish(guestTopic, { type: 'hello' });
+                    helloInterval = setInterval(() => {
+                        if (signalingClient && !rtc.remoteDescription) {
+                            signalingClient.publish(guestTopic, { type: 'hello' });
+                        } else {
+                            clearInterval(helloInterval);
+                        }
+                    }, 1500);
+                };
+
+                signalingClient.connect();
+            }
+
+            function createNetworkState() {
+                return {
+                    type: 'state',
+                    phase,
+                    roundNumber,
+                    scores: [...scores],
+                    players: players.map(p => ({
+                        id: p.id, x: p.x, y: p.y, vx: p.vx, vy: p.vy, dx: p.dx, dy: p.dy,
+                        ammo: p.ammo, cooldown: p.cooldown, dashCooldown: p.dashCooldown,
+                        dashTime: p.dashTime, invulnerable: p.invulnerable, flash: p.flash, dryClick: p.dryClick
+                    })),
+                    bullets: bullets.map(b => ({
+                        x: b.x, y: b.y, vx: b.vx, vy: b.vy, bounces: b.bounces,
+                        owner: b.owner, age: b.age, ownerGrace: b.ownerGrace
+                    })),
+                    ammoCrate: ammoCrate ? { x: ammoCrate.x, y: ammoCrate.y, time: ammoCrate.time, pulse: ammoCrate.pulse } : null,
+                    gateTimer,
+                    gateCooldown,
+                    eventLine: document.getElementById('eventLine').textContent
+                };
+            }
+
+            function sendNetworkState() {
+                if (modeState.value === 'online' && networkRole === 'host' && networkIsOpen()) {
+                    sendNetwork(createNetworkState());
+                }
+            }
+
+            function applyNetworkState(state) {
+                if (networkRole !== 'guest') return;
+                const prevPhase = phase;
+                phase = state.phase;
+                roundNumber = state.roundNumber;
+                scores[0] = state.scores[0];
+                scores[1] = state.scores[1];
+
+                if (players.length < 2) {
+                    players = [makePlayer(0, state.players[0].x, state.players[0].y), makePlayer(1, state.players[1].x, state.players[1].y)];
+                }
+                state.players.forEach((sp, i) => {
+                    if (players[i]) Object.assign(players[i], sp);
+                });
+
+                bullets = state.bullets;
+                ammoCrate = state.ammoCrate;
+                gateTimer = state.gateTimer;
+                gateCooldown = state.gateCooldown;
+
+                if (state.eventLine) {
+                    document.getElementById('eventLine').textContent = state.eventLine;
+                }
+
+                document.getElementById('roundLabel').textContent = `ROUND ${roundNumber}`;
+                document.getElementById('pauseBtn').disabled = true;
+
+                if (phase === 'round') {
+                    overlay.hidden = true;
+                } else if (phase === 'result' && prevPhase !== 'result') {
+                    const winnerId = scores[0] > scores[1] ? 0 : 1;
+                    const label = winnerId === 1 ? 'Player Two (You)' : 'Player One (Host)';
+                    const matchOver = scores[0] >= matchTarget || scores[1] >= matchTarget;
+                    showOverlay(
+                        matchOver ? 'Match complete' : `Round ${roundNumber} decided`,
+                        matchOver ? `${label} owns the maze.` : `${label} survives.`,
+                        `Score ${scores[0]} : ${scores[1]}.`,
+                        'Waiting for host…',
+                        () => {}
+                    );
+                }
+                updateHud();
+                draw();
+            }
+
+            function handleNetworkMessage(message) {
+                if (!message || typeof message !== 'object') return;
+                if (message.type === 'hello' && networkRole === 'host') {
+                    sendNetworkState();
+                } else if (message.type === 'move' && networkRole === 'host') {
+                    if (players[1]) {
+                        players[1].onlineMoveX = message.mx || 0;
+                        players[1].onlineMoveY = message.my || 0;
+                    }
+                } else if (message.type === 'fire' && networkRole === 'host') {
+                    if (players[1] && phase === 'round') fire(players[1]);
+                } else if (message.type === 'dash' && networkRole === 'host') {
+                    if (players[1] && phase === 'round') attemptDash(players[1]);
+                } else if (message.type === 'gate' && networkRole === 'host') {
+                    if (players[1] && phase === 'round') activateGate(players[1]);
+                } else if (message.type === 'state' && networkRole === 'guest') {
+                    applyNetworkState(message);
+                } else if (message.type === 'action' && networkRole === 'guest') {
+                    if (message.action === 'start' || message.action === 'rematch') {
+                        startMatch();
+                    } else if (message.action === 'next') {
+                        roundNumber++;
+                        beginRound();
+                    }
+                }
+            }
+
+            function sendGuestMovement() {
+                if (modeState.value !== 'online' || networkRole !== 'guest' || phase !== 'round') return;
+                const mx = Number(keys.has('d') || keys.has('arrowright')) - Number(keys.has('a') || keys.has('arrowleft'));
+                const my = Number(keys.has('s') || keys.has('arrowdown')) - Number(keys.has('w') || keys.has('arrowup'));
+                if (mx !== guestLastMx || my !== guestLastMy) {
+                    guestLastMx = mx;
+                    guestLastMy = my;
+                    sendNetwork({ type: 'move', playerId: 1, mx, my });
+                }
+            }
+
             function setMode(value) {
                 if (phase === 'round' || phase === 'paused') return;
+                if (modeState.value === 'online' && value !== 'online') closeOnline();
                 modeState.value = value;
-                modeButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.id === (value === 'two' ? 'twoPlayerMode' : 'aiMode'))));
+                modeButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.id === (value === 'two' ? 'twoPlayerMode' : value === 'ai' ? 'aiMode' : 'onlineMode'))));
                 document.getElementById('difficultyField').hidden = value !== 'ai';
-                document.getElementById('p2Controls').hidden = value === 'ai';
+                document.getElementById('onlineField').hidden = value !== 'online';
+                const guest = value === 'online' && networkRole === 'guest';
+                document.getElementById('p1Controls').hidden = guest;
+                document.getElementById('p2Controls').hidden = value === 'ai' || (value === 'online' && !guest);
                 document.getElementById('aiControlNote').hidden = value !== 'ai';
-                document.getElementById('playerTwoName').textContent = value === 'ai' ? 'Rival AI' : 'Player Two';
+                document.getElementById('playerTwoName').textContent = value === 'ai' ? 'Rival AI' : value === 'online' ? 'Online Player' : 'Player Two';
+                document.getElementById('pauseBtn').disabled = phase !== 'round' || value === 'online';
+                syncOnlineOverlay();
             }
 
             function preventKeys(event) {
@@ -1179,6 +1812,27 @@
                 if (key === 'escape' || key === 'p') { togglePause(); return; }
                 if (phase !== 'round') return;
                 preventKeys(event);
+
+                if (modeState.value === 'online') {
+                    if (networkRole === 'guest') {
+                        if (!event.repeat && (key === ' ' || key === 'enter')) {
+                            ensureAudio();
+                            noiseBurst(.04, .06, 1200);
+                            tone(880, .05, 'triangle', .03);
+                            sendNetwork({ type: 'fire', playerId: 1 });
+                        }
+                        if (key === 'shift' || event.code === 'ShiftRight') sendNetwork({ type: 'dash', playerId: 1 });
+                        if (key === 'e' || (key === 'control' && event.location === KeyboardEvent.DOM_KEY_LOCATION_RIGHT)) sendNetwork({ type: 'gate', playerId: 1 });
+                    } else if (networkRole === 'host') {
+                        if (!event.repeat && key === ' ') fire(players[0]);
+                        if (key === 'shift') attemptDash(players[0]);
+                        else if (key === 'e') activateGate(players[0]);
+                    }
+                    keys.add(key);
+                    if (networkRole === 'guest') sendGuestMovement();
+                    return;
+                }
+
                 if (!event.repeat && key === ' ') fire(players[0]);
                 if (!event.repeat && key === 'enter' && modeState.value === 'two') fire(players[1]);
                 if (event.code === 'ShiftRight' && modeState.value === 'two') attemptDash(players[1]);
@@ -1187,12 +1841,61 @@
                 else if (key === 'control' && event.location === KeyboardEvent.DOM_KEY_LOCATION_RIGHT && modeState.value === 'two') activateGate(players[1]);
                 keys.add(key);
             });
-            window.addEventListener('keyup', (event) => keys.delete(event.key.toLowerCase()));
-            window.addEventListener('blur', () => keys.clear());
+            window.addEventListener('keyup', (event) => {
+                keys.delete(event.key.toLowerCase());
+                if (modeState.value === 'online' && networkRole === 'guest') {
+                    sendGuestMovement();
+                }
+            });
+            window.addEventListener('blur', () => {
+                keys.clear();
+                if (modeState.value === 'online' && networkRole === 'guest') {
+                    sendGuestMovement();
+                }
+            });
             canvas.addEventListener('pointerdown', () => canvas.focus());
-            overlayButton.addEventListener('click', () => overlayAction());
+            overlayButton.addEventListener('click', () => {
+                if (modeState.value !== 'online') {
+                    overlayAction();
+                    return;
+                }
+                if (networkRole !== 'host' || !networkIsOpen()) return;
+                const action = phase === 'menu' ? 'start' : scores.some(s => s >= matchTarget) ? 'rematch' : 'next';
+                overlayAction();
+                sendNetwork({ type: 'action', action });
+            });
             modeButtons[0].addEventListener('click', () => setMode('two'));
             modeButtons[1].addEventListener('click', () => setMode('ai'));
+            modeButtons[2].addEventListener('click', () => setMode('online'));
+            document.getElementById('hostRoom').addEventListener('click', hostOnline);
+            document.getElementById('joinRoom').addEventListener('click', joinOnline);
+            document.getElementById('copyRoom').addEventListener('click', async () => {
+                if (!networkRoomCode) return;
+                try {
+                    await navigator.clipboard.writeText(networkRoomCode);
+                    setOnlineStatus(`Room code ${networkRoomCode} copied! Send it to your opponent.`);
+                } catch {
+                    const roomInput = document.getElementById('roomCode');
+                    if (roomInput) { roomInput.focus(); roomInput.select(); }
+                    setOnlineStatus(`Room code: ${networkRoomCode}. Send it to your opponent.`);
+                }
+            });
+            document.getElementById('copyLink').addEventListener('click', async () => {
+                if (!networkRoomCode) return;
+                const link = `${location.origin}${location.pathname}?room=${networkRoomCode}`;
+                try {
+                    await navigator.clipboard.writeText(link);
+                    setOnlineStatus('Invite link copied! Send it to your opponent.');
+                } catch {
+                    setOnlineStatus(`Invite link: ${link}`);
+                }
+            });
+            document.getElementById('roomCode').addEventListener('input', event => {
+                event.currentTarget.value = event.currentTarget.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 6);
+            });
+            document.getElementById('roomCode').addEventListener('keydown', event => {
+                if (event.key === 'Enter') joinOnline();
+            });
             document.getElementById('pauseBtn').addEventListener('click', togglePause);
             document.getElementById('restartBtn').addEventListener('click', () => showOverlay('Fresh match', 'Reset the chamber?', 'Current score and all live rounds will be cleared.', 'Start again', startMatch));
             document.getElementById('soundToggle').addEventListener('click', (event) => {
@@ -1208,11 +1911,20 @@
             window.addEventListener('resize', resizeCanvas);
             if ('ResizeObserver' in window) new ResizeObserver(resizeCanvas).observe(canvas);
             const launchOptions = new URLSearchParams(window.location.search);
-            const launchMode = launchOptions.get('mode') === 'ai' ? 'ai' : 'two';
+            const launchRoom = launchOptions.get('room') || launchOptions.get('code');
+            const launchMode = launchOptions.get('mode') === 'ai' ? 'ai' : (launchOptions.get('mode') === 'online' || launchRoom) ? 'online' : 'two';
             if (launchMode === 'ai' && ['low', 'medium', 'high'].includes(launchOptions.get('difficulty'))) {
                 document.getElementById('difficulty').value = launchOptions.get('difficulty');
             }
             setMode(launchMode);
+            if (launchRoom) {
+                const clean = launchRoom.trim().toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 6);
+                const roomInput = document.getElementById('roomCode');
+                if (roomInput && clean) {
+                    roomInput.value = clean;
+                    setOnlineStatus(`Room ${clean} ready. Click Join to connect.`);
+                }
+            }
             resizeCanvas();
             updateHud();
             requestAnimationFrame(frame);

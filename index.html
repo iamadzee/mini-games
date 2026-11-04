@@ -49,7 +49,7 @@
         .play-link { min-width:150px; min-height:42px; display:inline-flex; justify-content:space-between; align-items:center; gap:18px; padding:9px 13px; border:1px solid var(--mint); border-radius:4px; background:var(--mint); color:#0c1719; font-size:.77rem; font-weight:850; text-decoration:none; }
         .play-link:hover { filter:brightness(1.07); }
         .play-link span:last-child { font-size:1.05rem; }
-        .upcoming { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:10px; }
+        .upcoming { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:10px; }
         .slot { min-height:92px; display:flex; align-items:center; gap:13px; padding:15px; border:1px dashed #3a444c; background:rgba(25,31,41,.55); }
         .slot-number { color:#718089; font:800 .72rem ui-monospace,monospace; }
         .slot-label { color:#8d9aa2; font-size:.68rem; font-weight:750; line-height:1.35; }
@@ -68,10 +68,10 @@
     <main>
         <section class="intro" aria-labelledby="pageTitle">
             <div><p class="eyebrow">A small arcade · growing collection</p><h1 id="pageTitle">Pick a game. Jump in.</h1></div>
-            <p class="intro-copy">Quick rounds, local play, and no accounts to get in the way. Choose the ricochet maze or test your nerve in the sword-and-bow duel.</p>
+            <p class="intro-copy">Quick rounds, local play, and no accounts to get in the way. Choose the ricochet maze, test your nerve in the sword-and-bow duel, or outthink your rival on the chessboard.</p>
         </section>
         <section aria-labelledby="libraryTitle">
-            <div class="library-head"><h2 id="libraryTitle">The collection</h2><span class="library-count">02 PLAYABLE / 05 PLANNED</span></div>
+            <div class="library-head"><h2 id="libraryTitle">The collection</h2><span class="library-count">03 PLAYABLE / 05 PLANNED</span></div>
             <article class="feature">
                 <div class="feature-art" aria-label="Chamber Maze arena illustration">
                     <svg viewBox="0 0 720 430" role="img" aria-labelledby="mazeTitle">
@@ -88,7 +88,7 @@
                     <span class="feature-index">GAME 01 / CHAMBER DUEL</span>
                     <h3>Ricochet:<br>Chamber Maze</h3>
                     <p>Every missed shot stays alive. Read the angles, bait your rival, and keep moving when the corridors start to sing.</p>
-                    <div class="feature-meta"><span>TWO PLAYER</span><span>VS AI</span><span>OFFLINE</span></div>
+                    <div class="feature-meta"><span>TWO PLAYER</span><span>VS AI</span><span>ONLINE ROOMS</span></div>
                     <a class="play-link" href="ricochet.html"><span>Play Ricochet</span><span aria-hidden="true">&#8594;</span></a>
                 </div>
             </article>
@@ -109,12 +109,76 @@
                     <span class="feature-index">GAME 02 / SWORD &amp; BOW</span>
                     <h3>Five Arrows:<br>Parry Duel</h3>
                     <p>Five shots. A slow draw. A shield that can save you or punish a false read. Feint, close the gap, and strike during recovery.</p>
-                    <div class="feature-meta"><span>TWO PLAYER</span><span>THREE AI STYLES</span><span>TOUCH</span></div>
+                    <div class="feature-meta"><span>TWO PLAYER</span><span>VS AI</span><span>ONLINE ROOMS</span></div>
                     <a class="play-link" href="duel.html"><span>Enter the duel</span><span aria-hidden="true">&#8594;</span></a>
                 </div>
             </article>
-            <div class="upcoming" aria-label="Three more games are planned">
-                <div class="slot"><span class="slot-number">03</span><span class="slot-label">Next game<br>in development</span></div>
+            <article class="feature chess-feature">
+                <div class="feature-art" aria-label="Classic chess illustration">
+                    <svg viewBox="0 0 720 430" role="img" aria-labelledby="chessTitle">
+                        <title id="chessTitle">Chessboard with classic king, queen, rook, and knight pieces</title>
+                        <defs>
+                            <pattern id="chessTilePattern" width="48" height="48" patternUnits="userSpaceOnUse">
+                                <rect width="24" height="24" fill="#141c26"/>
+                                <rect x="24" width="24" height="24" fill="#243241"/>
+                                <rect y="24" width="24" height="24" fill="#243241"/>
+                                <rect x="24" y="24" width="24" height="24" fill="#141c26"/>
+                                <path d="M0 24h48M24 0v48" stroke="#374857" stroke-width="0.75" stroke-opacity="0.3"/>
+                            </pattern>
+                            <filter id="chessGlow">
+                                <feGaussianBlur stdDeviation="4" result="blur"/>
+                                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                            </filter>
+                        </defs>
+                        <rect x="22" y="18" width="676" height="394" fill="#0d141d" stroke="#50616e" stroke-opacity=".6"/>
+                        <!-- Angled board representation -->
+                        <g transform="translate(360, 215) scale(1, 0.58) rotate(45)">
+                            <rect x="-180" y="-180" width="360" height="360" fill="url(#chessTilePattern)" stroke="#72e0cb" stroke-width="2" stroke-opacity="0.4"/>
+                            <rect x="-90" y="-90" width="45" height="45" fill="#72e0cb" fill-opacity="0.2" stroke="#72e0cb" stroke-width="1.5"/>
+                            <rect x="0" y="45" width="45" height="45" fill="#efc46e" fill-opacity="0.2" stroke="#efc46e" stroke-width="1.5"/>
+                            <path d="M -67 -67 L 22 67" stroke="#72e0cb" stroke-width="2.5" stroke-dasharray="6 4" filter="url(#chessGlow)"/>
+                        </g>
+                        <!-- White King Piece -->
+                        <g transform="translate(265, 145)">
+                            <ellipse cx="0" cy="50" rx="36" ry="12" fill="#0b171c" stroke="#72e0cb" stroke-width="2"/>
+                            <!-- King Body -->
+                            <path d="M -24 48 Q -10 12 -16 -6 Q -26 -25 0 -36 Q 26 -25 16 -6 Q 10 12 24 48 Z" fill="#f1f5f9" stroke="#1e293b" stroke-width="3" stroke-linejoin="round"/>
+                            <ellipse cx="0" cy="-6" rx="16" ry="4" fill="#cbd5e1" stroke="#1e293b" stroke-width="2.5"/>
+                            <!-- Cross -->
+                            <path d="M -8 -45 L 8 -45 M 0 -53 L 0 -38" stroke="#1e293b" stroke-width="3.5" stroke-linecap="round"/>
+                        </g>
+                        <!-- Black Queen Piece -->
+                        <g transform="translate(455, 205)">
+                            <ellipse cx="0" cy="50" rx="34" ry="11" fill="#1f1016" stroke="#ff836d" stroke-width="2"/>
+                            <!-- Queen Body & Crown -->
+                            <path d="M -24 48 Q -10 12 -15 -6 L -30 -30 L -15 -18 L 0 -42 L 15 -18 L 30 -30 L 15 -6 Q 10 12 24 48 Z" fill="#1e293b" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round"/>
+                            <circle cx="-30" cy="-32" r="3.5" fill="#94a3b8"/>
+                            <circle cx="0" cy="-44" r="4" fill="#94a3b8"/>
+                            <circle cx="30" cy="-32" r="3.5" fill="#94a3b8"/>
+                            <ellipse cx="0" cy="-6" rx="15" ry="4" fill="#0f172a" stroke="#94a3b8" stroke-width="2.5"/>
+                        </g>
+                        <!-- White Rook in the background -->
+                        <g transform="translate(160, 240) scale(0.75)">
+                            <ellipse cx="0" cy="50" rx="32" ry="10" fill="#0b171c" stroke="#50616e" stroke-width="2"/>
+                            <path d="M -22 48 L -16 -12 L -24 -12 L -24 -36 L -14 -36 L -14 -24 L -5 -24 L -5 -36 L 5 -36 L 5 -24 L 14 -24 L 14 -36 L 24 -36 L 24 -12 L 16 -12 L 22 48 Z" fill="#f1f5f9" stroke="#1e293b" stroke-width="3" stroke-linejoin="round"/>
+                        </g>
+                        <!-- Black Knight in the background -->
+                        <g transform="translate(560, 150) scale(0.75)">
+                            <ellipse cx="0" cy="50" rx="32" ry="10" fill="#1f1016" stroke="#50616e" stroke-width="2"/>
+                            <path d="M -24 48 L -18 16 Q -34 0 -22 -22 L -14 -30 L -6 -44 L 0 -34 Q 15 -18 22 18 L 24 48 Z" fill="#1e293b" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round"/>
+                            <circle cx="-8" cy="-18" r="3" fill="#cbd5e1"/>
+                        </g>
+                    </svg>
+                </div>
+                <div class="feature-copy">
+                    <span class="feature-index">GAME 03 / CLASSIC STRATEGY</span>
+                    <h3>Chess:<br>The Board of Kings</h3>
+                    <p>The timeless game of strategy. Play against a friend locally, test your skill against the AI across three difficulty tiers, or create an online room for cross-device play.</p>
+                    <div class="feature-meta"><span>TWO PLAYER</span><span>VS AI</span><span>ONLINE ROOMS</span></div>
+                    <a class="play-link" href="chess.html"><span>Play Chess</span><span aria-hidden="true">&#8594;</span></a>
+                </div>
+            </article>
+            <div class="upcoming" aria-label="Two more games are planned">
                 <div class="slot"><span class="slot-number">04</span><span class="slot-label">Next game<br>in development</span></div>
                 <div class="slot"><span class="slot-number">05</span><span class="slot-label">Next game<br>in development</span></div>
             </div>
