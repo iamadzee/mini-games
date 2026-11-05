@@ -220,7 +220,7 @@
                 <div class="scorebar">
                     <div class="score-player">
                         <span class="player-dot" aria-hidden="true"></span>
-                        <div><span class="player-label">Player One</span><strong class="score-number" id="scoreOne">0</strong></div>
+                        <div><span class="player-label" id="playerOneName">Player One</span><strong class="score-number" id="scoreOne">0</strong></div>
                         <span class="score-ammo" id="ammoOne">AMMO 6</span>
                     </div>
                     <span class="versus">VS</span>
@@ -295,6 +295,7 @@
                         <div class="control-row"><span>Dash</span><span class="key-group"><kbd>RShift</kbd></span></div>
                         <div class="control-row"><span>Seal gate nearby</span><span class="key-group"><kbd>RCtrl</kbd></span></div>
                     </div>
+                    <p class="muted-note" id="onlineControlNote" hidden>Online match: WASD or Arrows · Space or Enter to fire · Shift to dash · E to seal.</p>
                     <p class="muted-note" id="aiControlNote" hidden>WASD, Space, Shift, and E control Player One.</p>
                 </section>
                 <section class="panel-section">
@@ -338,6 +339,7 @@
             let networkSnapshotTimer = 0;
             let guestLastMx = 0;
             let guestLastMy = 0;
+            let pendingNetworkEvents = [];
             const palette = { cyan: '#66e4d1', coral: '#ff8068', gold: '#f5c46a', wall: '#3a4653', floor: '#101720' };
             const staticBlocks = [
                 { cx: 405, cy: 190, w: 90, h: 16, angle: 0 }, { cx: 555, cy: 190, w: 90, h: 16, angle: 0 },
@@ -506,13 +508,17 @@
                 noiseBurst(.22, .08, 620);
                 sweepTone(170, 45, .34, 'sawtooth', .085);
                 tone(winnerId === 0 ? 660 : 440, .22, 'sine', .055);
-                const label = winnerId === 0 ? 'Player One' : (modeState.value === 'ai' ? 'Rival AI' : modeState.value === 'online' ? 'Online Player' : 'Player Two');
+                const isOnline = modeState.value === 'online';
+                const label = winnerId === 0
+                    ? (isOnline ? (networkRole === 'host' ? 'Player One (You)' : 'Player One (Host)') : 'Player One')
+                    : (modeState.value === 'ai' ? 'Rival AI' : (isOnline ? (networkRole === 'guest' ? 'Player Two (You)' : 'Player Two (Opponent)') : 'Player Two'));
                 const matchOver = scores[winnerId] >= matchTarget;
+                const actionText = isOnline && networkRole === 'guest' ? 'Waiting for host…' : (matchOver ? 'Rematch' : 'Next round');
                 if (matchOver) {
-                    showOverlay('Match complete', `${label} owns the maze.`, `Final score ${scores[0]} : ${scores[1]}. Run it back when you are ready.`, 'Rematch', startMatch);
+                    showOverlay('Match complete', `${label} owns the maze.`, `Final score ${scores[0]} : ${scores[1]}. Run it back when you are ready.`, actionText, startMatch);
                     setEvent('Match decided.', label);
                 } else {
-                    showOverlay(`Round ${roundNumber} decided`, `${label} survives.`, `Score ${scores[0]} : ${scores[1]}. Every round starts clean; the maze is waiting.`, 'Next round', () => {
+                    showOverlay(`Round ${roundNumber} decided`, `${label} survives.`, `Score ${scores[0]} : ${scores[1]}. Every round starts clean; the maze is waiting.`, actionText, () => {
                         roundNumber += 1;
                         beginRound();
                     });
@@ -520,7 +526,10 @@
                 }
                 document.getElementById('pauseBtn').disabled = true;
                 draw();
-                if (modeState.value === 'online' && networkRole === 'host') sendNetworkState();
+                if (isOnline && networkRole === 'host') {
+                    pendingNetworkEvents.push({ type: 'endRound', winnerId });
+                    sendNetworkState();
+                }
             }
 
             function togglePause() {
@@ -660,7 +669,10 @@
                 sweepTone(player.id === 0 ? 580 : 460, 150, .11, 'square', .035);
                 setEvent(`${bullets.length} live rounds in the maze.`, 'Shot fired.');
                 updateHud();
-                if (modeState.value === 'online' && networkRole === 'host') sendNetworkState();
+                if (modeState.value === 'online' && networkRole === 'host') {
+                    pendingNetworkEvents.push({ type: 'fire', playerId: player.id });
+                    sendNetworkState();
+                }
             }
 
             function ricochet(bullet, nx, ny, hitX, hitY, audible = true) {
@@ -681,8 +693,12 @@
                     previousSoundTime = performance.now();
                     tone(390 + Math.min(800, bullet.bounces * 19), .04, 'triangle', .016);
                     sweepTone(260 + Math.min(500, bullet.bounces * 14), 720 + Math.min(500, bullet.bounces * 18), .055, 'sine', .035);
+                    if (modeState.value === 'online' && networkRole === 'host') {
+                        pendingNetworkEvents.push({ type: 'ricochet', bounces: bullet.bounces });
+                    }
                 }
                 if (audible && hitX !== undefined) {
+                    if (!bullet.trail) bullet.trail = [];
                     bullet.trail.push({ x: hitX, y: hitY, time: .18 });
                     if (bullet.trail.length > 10) bullet.trail.shift();
                 }
@@ -762,8 +778,19 @@
 
             function attemptDash(player) {
                 if (player.dashCooldown > 0 || phase !== 'round') return;
-                const movingX = player.ai ? player.aiMoveX : (Number(keys.has(player.id === 0 ? 'd' : 'arrowright')) - Number(keys.has(player.id === 0 ? 'a' : 'arrowleft')));
-                const movingY = player.ai ? player.aiMoveY : (Number(keys.has(player.id === 0 ? 's' : 'arrowdown')) - Number(keys.has(player.id === 0 ? 'w' : 'arrowup')));
+                let movingX = 0;
+                let movingY = 0;
+                if (player.ai) {
+                    movingX = player.aiMoveX;
+                    movingY = player.aiMoveY;
+                } else if (modeState.value === 'online' && player.id === 1) {
+                    movingX = player.onlineMoveX || 0;
+                    movingY = player.onlineMoveY || 0;
+                } else {
+                    const isFirst = player.id === 0;
+                    movingX = Number(keys.has(isFirst ? 'd' : 'arrowright')) - Number(keys.has(isFirst ? 'a' : 'arrowleft'));
+                    movingY = Number(keys.has(isFirst ? 's' : 'arrowdown')) - Number(keys.has(isFirst ? 'w' : 'arrowup'));
+                }
                 if (movingX || movingY) {
                     const length = Math.hypot(movingX, movingY) || 1;
                     player.dx = movingX / length;
@@ -775,7 +802,10 @@
                 noiseBurst(.16, .075, 2400);
                 sweepTone(960, 150, .2, 'sawtooth', .065);
                 tone(125, .13, 'sine', .045);
-                if (modeState.value === 'online' && networkRole === 'host') sendNetworkState();
+                if (modeState.value === 'online' && networkRole === 'host') {
+                    pendingNetworkEvents.push({ type: 'dash', playerId: player.id });
+                    sendNetworkState();
+                }
             }
 
             function activateGate(player) {
@@ -792,7 +822,10 @@
                 noiseBurst(.34, .09, 420);
                 sweepTone(245, 48, .48, 'triangle', .09);
                 setEvent('Four temporary gates lock the chamber for three seconds.', 'Pressure seal active.');
-                if (modeState.value === 'online' && networkRole === 'host') sendNetworkState();
+                if (modeState.value === 'online' && networkRole === 'host') {
+                    pendingNetworkEvents.push({ type: 'gate' });
+                    sendNetworkState();
+                }
                 return true;
             }
 
@@ -988,14 +1021,44 @@
                     my = player.onlineMoveY || 0;
                 } else {
                     const isFirst = player.id === 0;
-                    mx = Number(keys.has(isFirst ? 'd' : 'arrowright')) - Number(keys.has(isFirst ? 'a' : 'arrowleft'));
-                    my = Number(keys.has(isFirst ? 's' : 'arrowdown')) - Number(keys.has(isFirst ? 'w' : 'arrowup'));
+                    const canUseArrows = isFirst ? (modeState.value === 'ai' || modeState.value === 'online') : true;
+                    const canUseWasd = isFirst ? true : false;
+                    mx = Number((canUseWasd && keys.has('d')) || (canUseArrows && keys.has('arrowright'))) - Number((canUseWasd && keys.has('a')) || (canUseArrows && keys.has('arrowleft')));
+                    my = Number((canUseWasd && keys.has('s')) || (canUseArrows && keys.has('arrowdown'))) - Number((canUseWasd && keys.has('w')) || (canUseArrows && keys.has('arrowup')));
                     if (keys.has(isFirst ? ' ' : 'enter')) fire(player);
                 }
                 movePlayer(player, mx, my, dt);
             }
 
             function update(dt) {
+                if (modeState.value === 'online' && networkRole === 'guest') {
+                    if (phase === 'round') {
+                        for (const bullet of bullets) {
+                            bullet.x += (bullet.vx || 0) * dt;
+                            bullet.y += (bullet.vy || 0) * dt;
+                            if (bullet.trail) {
+                                bullet.trail.forEach(p => { p.time -= dt; });
+                                bullet.trail = bullet.trail.filter(p => p.time > 0);
+                            }
+                        }
+                        for (const player of players) {
+                            player.x += (player.vx || 0) * dt;
+                            player.y += (player.vy || 0) * dt;
+                            player.dashTime = Math.max(0, player.dashTime - dt);
+                            player.invulnerable = Math.max(0, player.invulnerable - dt);
+                            player.flash = Math.max(0, player.flash - dt);
+                            player.dryClick = Math.max(0, player.dryClick - dt);
+                        }
+                        if (ammoCrate) {
+                            ammoCrate.time -= dt;
+                            ammoCrate.pulse += dt;
+                        }
+                        gateTimer = Math.max(0, gateTimer - dt);
+                        gateCooldown = Math.max(0, gateCooldown - dt);
+                        updateHud();
+                    }
+                    return;
+                }
                 if (phase !== 'round') return;
                 roundElapsed += dt;
                 if (modeState.value === 'online' && networkRole === 'host' && networkIsOpen()) {
@@ -1038,6 +1101,10 @@
                         tone(690, .12, 'sine', .024);
                         window.setTimeout(() => tone(920, .15, 'sine', .03), 65);
                         setEvent('Four rounds loaded. Everyone heard the pickup.', `Player ${player.id + 1} took the crate.`);
+                        if (modeState.value === 'online' && networkRole === 'host') {
+                            pendingNetworkEvents.push({ type: 'ammo' });
+                            sendNetworkState();
+                        }
                     }
                 }
                 if (roundElapsed > 180) endRound(players[0].ammo >= players[1].ammo ? 0 : 1);
@@ -1165,7 +1232,8 @@
                 bullets.forEach((bullet) => {
                     const color = bulletColor(bullet);
                     ctx.save();
-                    for (const point of bullet.trail) {
+                    const trail = bullet.trail || [];
+                    for (const point of trail) {
                         ctx.globalAlpha = Math.max(0, point.time / .18) * .45;
                         ctx.fillStyle = color;
                         ctx.beginPath();
@@ -1226,10 +1294,33 @@
                 overlayButton.disabled = !connected || !host;
                 if (!connected) {
                     overlayButton.textContent = networkRole === 'host' ? 'Waiting for opponent…' : networkRole === 'guest' ? 'Connecting…' : 'Host or join a room';
+                    if (networkRole === 'host') {
+                        overlayKicker.textContent = 'Online match · Room ready';
+                        overlayTitle.textContent = `Room ${networkRoomCode}`;
+                        overlayText.textContent = 'Share the 6-character room code or invite link with your friend. The maze unlocks when they connect.';
+                    } else if (networkRole === 'guest') {
+                        overlayKicker.textContent = 'Online match · Connecting';
+                        overlayTitle.textContent = `Joining room ${networkRoomCode}…`;
+                        overlayText.textContent = 'Establishing direct connection with the host. Please wait a moment.';
+                    } else {
+                        overlayKicker.textContent = 'Online match';
+                        overlayTitle.textContent = 'Duel online.';
+                        overlayText.textContent = 'Host a room to invite a friend or enter a 6-character room code in the Match Setup panel to join.';
+                    }
                 } else if (host) {
                     overlayButton.textContent = phase === 'menu' ? 'Enter the maze' : scores.some(s => s >= matchTarget) ? 'Rematch' : 'Next round';
+                    if (phase === 'menu') {
+                        overlayKicker.textContent = 'Online match · Connected';
+                        overlayTitle.textContent = 'Opponent joined!';
+                        overlayText.textContent = 'Both players are locked in. Click Enter the maze to begin the match.';
+                    }
                 } else {
                     overlayButton.textContent = 'Waiting for host…';
+                    if (phase === 'menu') {
+                        overlayKicker.textContent = 'Online match · Connected';
+                        overlayTitle.textContent = 'Connected to host.';
+                        overlayText.textContent = 'You are playing as Player Two (Coral). Waiting for host to start the round.';
+                    }
                 }
             }
 
@@ -1546,6 +1637,7 @@
                     setOnlineStatus(`Room ${code} is ready. Share the code with your opponent.`);
                     syncOnlineOverlay();
 
+                    const hostPendingCandidates = [];
                     signalingClient.subscribe(guestTopic, async msg => {
                         if (!msg || typeof msg !== 'object') return;
                         if (msg.type === 'hello') {
@@ -1558,12 +1650,20 @@
                             try {
                                 if (rtc.signalingState === 'have-local-offer') {
                                     await rtc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: msg.sdp }));
+                                    while (hostPendingCandidates.length) {
+                                        const cand = hostPendingCandidates.shift();
+                                        await rtc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+                                    }
                                 }
                             } catch (e) {}
                         } else if (msg.type === 'candidate' && msg.candidate) {
-                            try {
-                                await rtc.addIceCandidate(new RTCIceCandidate(msg.candidate));
-                            } catch (e) {}
+                            if (rtc.remoteDescription && rtc.remoteDescription.type) {
+                                try {
+                                    await rtc.addIceCandidate(new RTCIceCandidate(msg.candidate));
+                                } catch (e) {}
+                            } else {
+                                hostPendingCandidates.push(msg.candidate);
+                            }
                         }
                     });
 
@@ -1674,24 +1774,47 @@
             }
 
             function createNetworkState() {
+                const events = [...pendingNetworkEvents];
+                pendingNetworkEvents = [];
                 return {
                     type: 'state',
                     phase,
                     roundNumber,
                     scores: [...scores],
                     players: players.map(p => ({
-                        id: p.id, x: p.x, y: p.y, vx: p.vx, vy: p.vy, dx: p.dx, dy: p.dy,
-                        ammo: p.ammo, cooldown: p.cooldown, dashCooldown: p.dashCooldown,
-                        dashTime: p.dashTime, invulnerable: p.invulnerable, flash: p.flash, dryClick: p.dryClick
+                        id: p.id,
+                        x: Math.round(p.x * 10) / 10,
+                        y: Math.round(p.y * 10) / 10,
+                        vx: Math.round(p.vx),
+                        vy: Math.round(p.vy),
+                        dx: Math.round(p.dx * 100) / 100,
+                        dy: Math.round(p.dy * 100) / 100,
+                        ammo: p.ammo,
+                        cooldown: Math.round(p.cooldown * 100) / 100,
+                        dashCooldown: Math.round(p.dashCooldown * 100) / 100,
+                        dashTime: Math.round(p.dashTime * 100) / 100,
+                        invulnerable: Math.round(p.invulnerable * 100) / 100,
+                        flash: Math.round(p.flash * 100) / 100,
+                        dryClick: Math.round(p.dryClick * 100) / 100
                     })),
                     bullets: bullets.map(b => ({
-                        x: b.x, y: b.y, vx: b.vx, vy: b.vy, bounces: b.bounces,
-                        owner: b.owner, age: b.age, ownerGrace: b.ownerGrace
+                        x: Math.round(b.x * 10) / 10,
+                        y: Math.round(b.y * 10) / 10,
+                        vx: Math.round(b.vx),
+                        vy: Math.round(b.vy),
+                        speed: b.speed,
+                        bounces: b.bounces,
+                        owner: b.owner,
+                        age: Math.round(b.age * 100) / 100,
+                        ownerGrace: b.ownerGrace,
+                        glow: b.glow || 0,
+                        trail: (b.trail || []).map(t => ({ x: Math.round(t.x), y: Math.round(t.y), time: t.time }))
                     })),
                     ammoCrate: ammoCrate ? { x: ammoCrate.x, y: ammoCrate.y, time: ammoCrate.time, pulse: ammoCrate.pulse } : null,
-                    gateTimer,
-                    gateCooldown,
-                    eventLine: document.getElementById('eventLine').textContent
+                    gateTimer: Math.round(gateTimer * 10) / 10,
+                    gateCooldown: Math.round(gateCooldown * 10) / 10,
+                    eventLine: document.getElementById('eventLine').textContent,
+                    events
                 };
             }
 
@@ -1716,7 +1839,10 @@
                     if (players[i]) Object.assign(players[i], sp);
                 });
 
-                bullets = state.bullets;
+                bullets = (state.bullets || []).map(b => ({
+                    ...b,
+                    trail: b.trail || []
+                }));
                 ammoCrate = state.ammoCrate;
                 gateTimer = state.gateTimer;
                 gateCooldown = state.gateCooldown;
@@ -1727,6 +1853,32 @@
 
                 document.getElementById('roundLabel').textContent = `ROUND ${roundNumber}`;
                 document.getElementById('pauseBtn').disabled = true;
+
+                if (Array.isArray(state.events) && audioEnabled) {
+                    state.events.forEach(ev => {
+                        if (ev.type === 'fire') {
+                            tone(ev.playerId === 0 ? 280 : 245, .075, 'sawtooth', .027);
+                            sweepTone(ev.playerId === 0 ? 580 : 460, 150, .11, 'square', .035);
+                        } else if (ev.type === 'ricochet') {
+                            tone(390 + Math.min(800, (ev.bounces || 0) * 19), .04, 'triangle', .016);
+                            sweepTone(260 + Math.min(500, (ev.bounces || 0) * 14), 720 + Math.min(500, (ev.bounces || 0) * 18), .055, 'sine', .035);
+                        } else if (ev.type === 'ammo') {
+                            tone(690, .12, 'sine', .024);
+                            window.setTimeout(() => tone(920, .15, 'sine', .03), 65);
+                        } else if (ev.type === 'gate') {
+                            noiseBurst(.34, .09, 420);
+                            sweepTone(245, 48, .48, 'triangle', .09);
+                        } else if (ev.type === 'dash') {
+                            noiseBurst(.16, .075, 2400);
+                            sweepTone(960, 150, .2, 'sawtooth', .065);
+                            tone(125, .13, 'sine', .045);
+                        } else if (ev.type === 'endRound') {
+                            noiseBurst(.22, .08, 620);
+                            sweepTone(170, 45, .34, 'sawtooth', .085);
+                            tone(ev.winnerId === 0 ? 660 : 440, .22, 'sine', .055);
+                        }
+                    });
+                }
 
                 if (phase === 'round') {
                     overlay.hidden = true;
@@ -1792,10 +1944,21 @@
                 document.getElementById('difficultyField').hidden = value !== 'ai';
                 document.getElementById('onlineField').hidden = value !== 'online';
                 const guest = value === 'online' && networkRole === 'guest';
+                const isOnline = value === 'online';
                 document.getElementById('p1Controls').hidden = guest;
-                document.getElementById('p2Controls').hidden = value === 'ai' || (value === 'online' && !guest);
+                document.getElementById('p2Controls').hidden = value === 'ai' || isOnline;
                 document.getElementById('aiControlNote').hidden = value !== 'ai';
-                document.getElementById('playerTwoName').textContent = value === 'ai' ? 'Rival AI' : value === 'online' ? 'Online Player' : 'Player Two';
+                const onlineNote = document.getElementById('onlineControlNote');
+                if (onlineNote) onlineNote.hidden = !isOnline;
+
+                const p1Label = document.getElementById('playerOneName');
+                const p2Label = document.getElementById('playerTwoName');
+                if (p1Label) {
+                    p1Label.textContent = isOnline ? (guest ? 'Opponent (Host)' : 'You (Host)') : 'Player One';
+                }
+                if (p2Label) {
+                    p2Label.textContent = value === 'ai' ? 'Rival AI' : isOnline ? (guest ? 'You (Guest)' : 'Opponent (Guest)') : 'Player Two';
+                }
                 document.getElementById('pauseBtn').disabled = phase !== 'round' || value === 'online';
                 syncOnlineOverlay();
             }
@@ -1817,16 +1980,18 @@
                     if (networkRole === 'guest') {
                         if (!event.repeat && (key === ' ' || key === 'enter')) {
                             ensureAudio();
-                            noiseBurst(.04, .06, 1200);
-                            tone(880, .05, 'triangle', .03);
                             sendNetwork({ type: 'fire', playerId: 1 });
                         }
-                        if (key === 'shift' || event.code === 'ShiftRight') sendNetwork({ type: 'dash', playerId: 1 });
-                        if (key === 'e' || (key === 'control' && event.location === KeyboardEvent.DOM_KEY_LOCATION_RIGHT)) sendNetwork({ type: 'gate', playerId: 1 });
+                        if (key === 'shift' || event.code === 'ShiftRight') {
+                            sendNetwork({ type: 'dash', playerId: 1 });
+                        }
+                        if (key === 'e' || (key === 'control' && event.location === KeyboardEvent.DOM_KEY_LOCATION_RIGHT)) {
+                            sendNetwork({ type: 'gate', playerId: 1 });
+                        }
                     } else if (networkRole === 'host') {
-                        if (!event.repeat && key === ' ') fire(players[0]);
-                        if (key === 'shift') attemptDash(players[0]);
-                        else if (key === 'e') activateGate(players[0]);
+                        if (!event.repeat && (key === ' ' || key === 'enter')) fire(players[0]);
+                        if (key === 'shift' || event.code === 'ShiftRight') attemptDash(players[0]);
+                        else if (key === 'e' || (key === 'control' && event.location === KeyboardEvent.DOM_KEY_LOCATION_RIGHT)) activateGate(players[0]);
                     }
                     keys.add(key);
                     if (networkRole === 'guest') sendGuestMovement();
@@ -1897,7 +2062,20 @@
                 if (event.key === 'Enter') joinOnline();
             });
             document.getElementById('pauseBtn').addEventListener('click', togglePause);
-            document.getElementById('restartBtn').addEventListener('click', () => showOverlay('Fresh match', 'Reset the chamber?', 'Current score and all live rounds will be cleared.', 'Start again', startMatch));
+            document.getElementById('restartBtn').addEventListener('click', () => {
+                if (modeState.value === 'online') {
+                    if (networkRole === 'host') {
+                        showOverlay('Restart match', 'Reset online match?', 'Scores and bullets will reset for both players.', 'Restart match', () => {
+                            startMatch();
+                            sendNetwork({ type: 'action', action: 'rematch' });
+                        });
+                    } else {
+                        setOnlineStatus('Only the room host can restart the match.');
+                    }
+                    return;
+                }
+                showOverlay('Fresh match', 'Reset the chamber?', 'Current score and all live rounds will be cleared.', 'Start again', startMatch);
+            });
             document.getElementById('soundToggle').addEventListener('click', (event) => {
                 audioEnabled = !audioEnabled;
                 event.currentTarget.textContent = audioEnabled ? 'Audio on' : 'Audio off';

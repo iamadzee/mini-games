@@ -34,6 +34,12 @@
       "short_name": "Parry Duel",
       "url": "./duel.html?mode=ai",
       "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Play Battleline against AI",
+      "short_name": "Battleline AI",
+      "url": "./battleline.html?mode=ai",
+      "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }]
     }
   ]
 }
