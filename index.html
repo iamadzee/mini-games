@@ -102,7 +102,7 @@
     <main>
         <section class="intro" aria-labelledby="pageTitle">
             <div><p class="eyebrow">A small arcade · growing collection</p><h1 id="pageTitle">Pick a game. Jump in.</h1></div>
-            <p class="intro-copy">Quick rounds, local play, and no accounts to get in the way. Choose the ricochet maze, test your nerve in the sword duel, outthink your rival on the chessboard, or command your squad on the battleline.</p>
+            <p class="intro-copy">Quick rounds, local play, and no accounts to get in the way. Choose the ricochet maze, test your nerve in the sword duel, outthink your rival on the chessboard, or smash bank shots in Cyber Puck.</p>
         </section>
         <section aria-labelledby="libraryTitle">
             <div class="library-head"><h2 id="libraryTitle">The collection</h2><span class="library-count">04 PLAYABLE / 05 PLANNED</span></div>
@@ -222,70 +222,79 @@
                 </div>
             </article>
             <article class="feature battleline-feature">
-                <div class="feature-art" aria-label="Battleline tactical warfare illustration">
+                <div class="feature-art" aria-label="Cyber Puck neon air hockey illustration">
                     <svg viewBox="0 0 720 430" role="img" aria-labelledby="battlelineTitle">
-                        <title id="battlelineTitle">Tactical squad battleground with heavy shield, longbow, and commander battle crests</title>
+                        <title id="battlelineTitle">Cyber Puck neon air hockey table with glowing cyan and pink mallets, light trails, and supersonic puck</title>
                         <defs>
-                            <pattern id="battleGridPat" width="36" height="36" patternUnits="userSpaceOnUse">
-                                <path d="M 36 0 L 0 0 0 36" fill="none" stroke="#253545" stroke-width="0.8"/>
-                            </pattern>
-                            <filter id="battleGlow">
-                                <feGaussianBlur stdDeviation="4" result="blur"/>
+                            <filter id="puckGlow" x="-50%" y="-50%" width="200%" height="200%">
+                                <feGaussianBlur stdDeviation="6" result="blur"/>
                                 <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
                             </filter>
+                            <linearGradient id="rinkBgGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#0a101f"/>
+                                <stop offset="50%" stop-color="#070c16"/>
+                                <stop offset="100%" stop-color="#14081b"/>
+                            </linearGradient>
+                            <linearGradient id="puckTrailGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#ffe600" stop-opacity="0.9"/>
+                                <stop offset="60%" stop-color="#ff0077" stop-opacity="0.3"/>
+                                <stop offset="100%" stop-color="#00f3ff" stop-opacity="0"/>
+                            </linearGradient>
                         </defs>
-                        <rect x="22" y="18" width="676" height="394" fill="#0c1219" stroke="#36495b" stroke-opacity=".7"/>
-                        <!-- Angled Tactical Ground Plane -->
-                        <g transform="translate(360, 240) scale(1.15, 0.52) rotate(-25)">
-                            <rect x="-160" y="-160" width="320" height="320" fill="#131c26" stroke="#486078" stroke-width="2"/>
-                            <rect x="-160" y="-160" width="320" height="320" fill="url(#battleGridPat)"/>
-                            <!-- Sun Shrine at center -->
-                            <circle cx="0" cy="0" r="28" fill="rgba(239, 196, 110, 0.2)" stroke="#efc46e" stroke-width="2"/>
-                            <circle cx="0" cy="0" r="14" fill="#efc46e" filter="url(#battleGlow)"/>
-                            <!-- Tactical movement path / vectors -->
-                            <path d="M -110 90 L -30 90 L -30 20 L 0 0" fill="none" stroke="#72e0cb" stroke-width="3" stroke-dasharray="6 4" filter="url(#battleGlow)"/>
-                            <circle cx="-110" cy="90" r="10" fill="#72e0cb"/>
-                            <path d="M 110 -90 L 30 -90 L 0 0" fill="none" stroke="#ff836d" stroke-width="3" stroke-dasharray="6 4" filter="url(#battleGlow)"/>
-                            <circle cx="110" cy="-90" r="10" fill="#ff836d"/>
+                        <rect x="22" y="18" width="676" height="394" fill="#070a10" stroke="#1c2536" stroke-opacity=".8"/>
+                        <!-- Rink Surface -->
+                        <rect x="50" y="45" width="620" height="340" rx="20" fill="url(#rinkBgGrad)" stroke="#1a273b" stroke-width="2"/>
+
+                        <!-- Outer Neon Cushion Rails -->
+                        <rect x="50" y="45" width="620" height="340" rx="20" fill="none" stroke="#00f3ff" stroke-width="2" stroke-opacity="0.4"/>
+                        <line x1="50" y1="45" x2="670" y2="45" stroke="#00f3ff" stroke-width="3" filter="url(#puckGlow)"/>
+                        <line x1="50" y1="385" x2="670" y2="385" stroke="#ff0077" stroke-width="3" filter="url(#puckGlow)"/>
+
+                        <!-- Goal Mouths -->
+                        <path d="M 50 145 L 35 145 L 35 285 L 50 285" fill="none" stroke="#00f3ff" stroke-width="4" filter="url(#puckGlow)"/>
+                        <path d="M 670 145 L 685 145 L 685 285 L 670 285" fill="none" stroke="#ff0077" stroke-width="4" filter="url(#puckGlow)"/>
+
+                        <!-- Center Red Line & Faceoff Circle -->
+                        <line x1="360" y1="45" x2="360" y2="385" stroke="#ff0055" stroke-width="2" stroke-dasharray="8 6" stroke-opacity="0.7"/>
+                        <circle cx="360" cy="215" r="70" fill="none" stroke="#00f3ff" stroke-width="2" stroke-dasharray="10 6" stroke-opacity="0.5"/>
+                        <circle cx="360" cy="215" r="8" fill="#ffe600" filter="url(#puckGlow)"/>
+
+                        <!-- Kinetic Puck Motion Trail -->
+                        <path d="M 210 240 Q 320 160 470 270" fill="none" stroke="url(#puckTrailGrad)" stroke-width="12" stroke-linecap="round" filter="url(#puckGlow)"/>
+                        <!-- The Supersonic Cyber Puck -->
+                        <circle cx="470" cy="270" r="14" fill="#ffe600" stroke="#ffffff" stroke-width="3" filter="url(#puckGlow)"/>
+                        <circle cx="470" cy="270" r="6" fill="#ff0055"/>
+
+                        <!-- Player 1 Cyan Mallet (Left) -->
+                        <g transform="translate(190, 215)">
+                            <circle cx="0" cy="0" r="42" fill="rgba(0, 243, 255, 0.1)" stroke="#00f3ff" stroke-width="1" stroke-dasharray="4 4"/>
+                            <circle cx="0" cy="0" r="28" fill="#0c2333" stroke="#00f3ff" stroke-width="3.5" filter="url(#puckGlow)"/>
+                            <circle cx="0" cy="0" r="14" fill="#00f3ff"/>
+                            <circle cx="0" cy="0" r="6" fill="#ffffff"/>
                         </g>
-                        <!-- Foreground Iron Kite Shield (Vanguard) -->
-                        <g transform="translate(230, 205)">
-                            <path d="M 0 -85 Q 45 -85 52 -10 Q 55 55 0 95 Q -55 55 -52 -10 Q -45 -85 0 -85 Z" fill="#182330" stroke="#72e0cb" stroke-width="3.5" filter="url(#battleGlow)"/>
-                            <!-- Shield boss & crest -->
-                            <path d="M 0 -65 L 0 75" stroke="#3d546b" stroke-width="4"/>
-                            <path d="M -36 -15 L 36 -15" stroke="#3d546b" stroke-width="4"/>
-                            <circle cx="0" cy="-15" r="14" fill="#72e0cb" stroke="#101820" stroke-width="3"/>
-                            <!-- Crossed Spear behind shield -->
-                            <line x1="-75" y1="95" x2="85" y2="-95" stroke="#cfdce6" stroke-width="4" stroke-linecap="round"/>
-                            <polygon points="85,-95 72,-82 92,-78" fill="#efc46e"/>
+
+                        <!-- Player 2 Pink Mallet (Right) -->
+                        <g transform="translate(530, 185)">
+                            <circle cx="0" cy="0" r="42" fill="rgba(255, 0, 119, 0.1)" stroke="#ff0077" stroke-width="1" stroke-dasharray="4 4"/>
+                            <circle cx="0" cy="0" r="28" fill="#2b0a1f" stroke="#ff0077" stroke-width="3.5" filter="url(#puckGlow)"/>
+                            <circle cx="0" cy="0" r="14" fill="#ff0077"/>
+                            <circle cx="0" cy="0" r="6" fill="#ffffff"/>
                         </g>
-                        <!-- Recurve War Bow & Arrow (Longbowman) -->
-                        <g transform="translate(490, 205) rotate(15)">
-                            <!-- Bow stave -->
-                            <path d="M -45 -100 Q 40 0 -45 100" fill="none" stroke="#e8c078" stroke-width="5" stroke-linecap="round"/>
-                            <!-- Bowstring -->
-                            <line x1="-45" y1="-100" x2="-45" y2="100" stroke="#8d9dae" stroke-width="1.5"/>
-                            <!-- Notched Arrow with ember glow -->
-                            <line x1="-80" y1="0" x2="60" y2="0" stroke="#f1f5f9" stroke-width="4" stroke-linecap="round"/>
-                            <polygon points="65,0 48,-8 52,0 48,8" fill="#ff836d" filter="url(#battleGlow)"/>
-                            <polygon points="-80,0 -92,-6 -87,0 -92,6" fill="#8d9dae"/>
-                        </g>
-                        <!-- Commander Crown Crest in sky -->
-                        <g transform="translate(360, 85)">
-                            <path d="M -28 14 L -20 -18 L -6 -2 L 0 -24 L 6 -2 L 20 -18 L 28 14 Z" fill="#efc46e" stroke="#101720" stroke-width="2" filter="url(#battleGlow)"/>
-                            <circle cx="0" cy="-24" r="3" fill="#ffffff"/>
-                            <circle cx="-20" cy="-18" r="2.5" fill="#ffffff"/>
-                            <circle cx="20" cy="-18" r="2.5" fill="#ffffff"/>
+
+                        <!-- Arena Orb / Powerup -->
+                        <g transform="translate(300, 150)">
+                            <circle cx="0" cy="0" r="16" fill="rgba(255, 230, 0, 0.2)" stroke="#ffe600" stroke-width="2" filter="url(#puckGlow)"/>
+                            <text x="0" y="5" font-size="14" text-anchor="middle">⚡</text>
                         </g>
                     </svg>
                 </div>
                 <div class="feature-copy">
-                    <span class="feature-index">GAME 04 / GRAND ARMY WARFARE</span>
-                    <h3>Battleline:<br>30,000 Soldiers</h3>
-                    <p>Fight a grand battle between two armies of 30,000 soldiers. Divide your 15,000 infantry, 10,000 cavalry, and 5,000 archers into 6 custom-named units. March, charge, loose volleys, and clash for dominance.</p>
-                    <div class="feature-meta"><span>TWO PLAYER</span><span>VS AI</span><span>ONLINE ROOMS</span></div>
+                    <span class="feature-index">GAME 04 / KINETIC SPORTS DUEL</span>
+                    <h3>Cyber Puck:<br>Neon Air Hockey</h3>
+                    <p>Fast-paced neon air hockey with real 2D momentum physics! Smash bank shots off cushions, claim supersonic Overdrive or Multi-Puck power-ups, and duel your rival or the Cyber-God AI to 10 points with intense Game Point tension.</p>
+                    <div class="feature-meta"><span>TWO PLAYER</span><span>VS AI (3 TIERS)</span><span>ONLINE ROOMS</span></div>
                     <div class="feature-actions">
-                        <a class="play-link" href="battleline.html"><span>Muster the Armies</span><span aria-hidden="true">&#8594;</span></a>
+                        <a class="play-link" href="battleline.html"><span>Enter the Rink</span><span aria-hidden="true">&#8594;</span></a>
                         <button class="guide-btn" type="button" data-game="battleline">📖 Guide</button>
                     </div>
                 </div>
@@ -303,7 +312,7 @@
                         <button class="guide-tab-btn active" type="button" role="tab" data-tab="ricochet" id="tabRicochet" aria-controls="panelRicochet" aria-selected="true">01 Ricochet</button>
                         <button class="guide-tab-btn" type="button" role="tab" data-tab="duel" id="tabDuel" aria-controls="panelDuel" aria-selected="false">02 Five Arrows</button>
                         <button class="guide-tab-btn" type="button" role="tab" data-tab="chess" id="tabChess" aria-controls="panelChess" aria-selected="false">03 Chess</button>
-                        <button class="guide-tab-btn" type="button" role="tab" data-tab="battleline" id="tabBattleline" aria-controls="panelBattleline" aria-selected="false">04 Battleline</button>
+                        <button class="guide-tab-btn" type="button" role="tab" data-tab="battleline" id="tabBattleline" aria-controls="panelBattleline" aria-selected="false">04 Cyber Puck</button>
                     </div>
                     <button class="guide-close-btn" id="guideCloseBtn" type="button" title="Close guide" aria-label="Close guide modal">✕</button>
                 </div>
@@ -459,67 +468,45 @@
                         </div>
                     </div>
 
-                    <!-- Panel 4: Battleline -->
+                    <!-- Panel 4: Cyber Puck -->
                     <div class="guide-panel" id="panelBattleline" role="tabpanel" aria-labelledby="tabBattleline">
-                        <div class="guide-panel-tag">GAME 04 · GRAND ARMY WARFARE (30,000 SOLDIERS)</div>
-                        <h3>Battleline: 30,000 Soldiers</h3>
-                        <p class="lead">A grand tactical clash between two mighty armies of 30,000 soldiers each. Organize 15,000 Infantry, 10,000 Cavalry, and 5,000 Archers into 6 customizable units, name them to your liking, and march against the enemy.</p>
+                        <div class="guide-panel-tag">GAME 04 · KINETIC SPORTS DUEL</div>
+                        <h3>Cyber Puck: Neon Air Hockey</h3>
+                        <p class="lead">High-octane neon air hockey powered by sub-pixel 2D collision physics. Zero friction, instant paddle impulse transfer, bank shots off cushions and 45° corner bevels, and 5 game-altering power-up capsules!</p>
 
                         <div class="guide-section">
-                            <h4>Army Pool &amp; War Council (30,000 Soldiers)</h4>
-                            <p>Both commanders command an identical grand army of <strong>30,000 soldiers</strong>, divided into <strong>6 units</strong>:</p>
+                            <h4>The Match Objective</h4>
                             <ul>
-                                <li>🛡️ <strong>15,000 Infantry:</strong> Rugged line footmen with heavy tower shields and long spears.</li>
-                                <li>🐎 <strong>10,000 Cavalry:</strong> Swift mounted shock lancers trained for devastating flank charges.</li>
-                                <li>🏹 <strong>5,000 Archers:</strong> Long-range sharpshooters capable of raining arrows from distance.</li>
-                            </ul>
-                            <p>Before the battle begins (or at any time by tapping <strong>Muster Armies</strong>), open the <strong>War Council</strong> to distribute your soldiers into 6 units and rename each company (e.g. <em>Royal Guard, Iron Vanguard, Thunder Riders</em>), or choose from battle-tested presets like <em>Standard Line</em>, <em>Iron Fortress</em>, <em>Cavalry Wing</em>, or <em>Twin Longbows</em>.</p>
-                        </div>
-
-                        <div class="guide-section">
-                            <h4>How to Win</h4>
-                            <p>Victory is achieved through total tactical dominance:</p>
-                            <ul>
-                                <li><strong>Annihilate the Enemy Army:</strong> Wipe out all 30,000 opposing soldiers in battle.</li>
-                                <li><strong>Capture the Sun Shrine:</strong> Seize and hold the central <em>Sacred Sun Shrine</em> landmark for 2 consecutive turns.</li>
+                                <li>🥅 <strong>First to 10 Points:</strong> Slap the puck across the center boundary line and blast it into the opposing goal pocket. Each goal awards 1 point.</li>
+                                <li>⚡ <strong>Game Point System:</strong> When a player reaches 9 points, high-tension Game Point activates. At 9-9 Deuce, sudden death triggers — next goal wins!</li>
+                                <li>🚫 <strong>Center Boundary:</strong> You cannot cross into the opponent's half of the rink. Defend your zone and snipe open angles.</li>
                             </ul>
                         </div>
 
                         <div class="guide-section">
-                            <h4>Turn Economy (6 Unit Orders)</h4>
-                            <p>Each turn gives you <strong>6 Orders</strong> — one order for each of your units. A unit can <strong>March</strong>, <strong>Attack</strong>, or <strong>Brace Shields</strong>. Units can also march and attack on the same turn if within reach! When finished with your maneuvers, tap <strong>End Turn</strong> or press <kbd>Space</kbd>.</p>
-                        </div>
-
-                        <div class="guide-section">
-                            <h4>Tactical Combat Triangle &amp; Special Maneuvers</h4>
+                            <h4>The 5 Arena Power-Up Orbs</h4>
                             <ul>
-                                <li>🛡️ <strong>Spear Wall (+40% vs Cavalry):</strong> Infantry form an unyielding wall of pikes, punishing charging mounted troops. Can also <strong>Brace Shields</strong> to reduce incoming damage by 35%.</li>
-                                <li>🐎 <strong>Thunder Charge (+50% Shock):</strong> Cavalry charging across 2 or more open tiles deal devastating shock damage. Overruns Archers (+50% bonus) and inflicts +40% bonus damage on flank and rear strikes!</li>
-                                <li>🏹 <strong>Ranged Volley (Zero Counter-Casualties):</strong> Archers loose arrows from 2 to 3 tiles away, inflicting ranged casualties with <strong>zero return damage</strong>! Fragile in close-quarters melee.</li>
+                                <li>💥 <strong>Overdrive Puck:</strong> Supercharges puck velocity with a flaming plasma comet trail!</li>
+                                <li>🛡️ <strong>Laser Barrier:</strong> Deploys an impenetrable forcefield over your goal mouth for 8 seconds.</li>
+                                <li>⚡ <strong>Multi-Puck:</strong> Triplicates the puck into three simultaneous projectiles for pure arcade mayhem!</li>
+                                <li>🔨 <strong>Titan Mallet:</strong> Expands your mallet paddle radius by +50% for 8 seconds of unstoppable coverage.</li>
+                                <li>❄️ <strong>EMP Shockwave:</strong> Freezes your opponent's mallet movement dead in its tracks for 1.2 seconds!</li>
                             </ul>
                         </div>
 
                         <div class="guide-section">
-                            <h4>Battlefield Locations (No Grids, Natural Meadow)</h4>
+                            <h4>Controls &amp; Input Methods</h4>
                             <ul>
-                                <li>🏛️ <strong>Ancient Stone Ruins:</strong> Impassable fortress walls; blocks troop passage and stops flying arrow volleys.</li>
-                                <li>🌲 <strong>Whispering Forest:</strong> Shaded pine grove providing natural cover; units inside absorb 20% of incoming ranged damage.</li>
-                                <li>⚑ <strong>Scout Watchtower:</strong> High vantage outpost; Archers stationed here gain +1 volley range!</li>
-                                <li>☀️ <strong>Sacred Sun Shrine:</strong> Central monument; hold this location for 2 consecutive turns for an immediate strategic victory!</li>
-                            </ul>
-                        </div>
-
-                        <div class="guide-section">
-                            <h4>Tactical Pro Tips</h4>
-                            <ul>
-                                <li>Use your Infantry as an anvil to absorb arrow fire and guard against Cavalry, then unleash your Cavalry around the wings for lethal flank strikes.</li>
-                                <li>Position your Archers on the Scout Watchtower early to command firing lanes over the meadow without taking return damage.</li>
+                                <li>🎮 <strong>Player 1 (Cyan / Left):</strong> Steer with <strong>W, A, S, D</strong> or <strong>Mouse</strong> · Power-Slap with <strong>Space / F</strong> or <strong>Left-Click</strong>.</li>
+                                <li>🕹️ <strong>Player 2 (Magenta / Right in 2P):</strong> Steer with <strong>Arrow Keys (↑, ↓, ←, →)</strong> · Power-Slap with <strong>Enter / Numpad 0</strong>.</li>
+                                <li>📱 <strong>Mobile 2-Player:</strong> Independent multi-touch — Player 1 touches left half, Player 2 touches right half.</li>
+                                <li>🛡️ <strong>45° Corner Bevels:</strong> Angled tournament corner bevels deflect pucks outward into open ice with exact normal reflection.</li>
                             </ul>
                         </div>
 
                         <div class="guide-footer-actions">
-                            <span style="font-size:0.72rem; color:var(--muted); font-family:ui-monospace,monospace;">Modes: 2-Player Local · Vs AI (3 Tiers) · Online Rooms</span>
-                            <a class="guide-play-cta" href="battleline.html"><span>Muster the Armies</span><span aria-hidden="true">&#8594;</span></a>
+                            <span style="font-size:0.72rem; color:var(--muted); font-family:ui-monospace,monospace;">Modes: 2-Player Local · Vs AI (Casual / Pro / Cyber-God) · Online Rooms</span>
+                            <a class="guide-play-cta" href="battleline.html"><span>Enter the Rink</span><span aria-hidden="true">&#8594;</span></a>
                         </div>
                     </div>
                 </div>
