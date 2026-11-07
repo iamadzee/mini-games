@@ -101,11 +101,11 @@
     </header>
     <main>
         <section class="intro" aria-labelledby="pageTitle">
-            <div><p class="eyebrow">A small arcade · growing collection</p><h1 id="pageTitle">Pick a game. Jump in.</h1></div>
-            <p class="intro-copy">Quick rounds, local play, and no accounts to get in the way. Choose the ricochet maze, test your nerve in the sword duel, outthink your rival on the chessboard, or smash bank shots in Cyber Puck.</p>
+            <div><p class="eyebrow">A small arcade · 5 full games</p><h1 id="pageTitle">Pick a game. Jump in.</h1></div>
+            <p class="intro-copy">Quick rounds, local play, and no accounts to get in the way. Choose the ricochet maze, test your nerve in the sword duel, outthink your rival on the chessboard, smash bank shots in Cyber Puck, or burn rubber in Hyper Drift.</p>
         </section>
         <section aria-labelledby="libraryTitle">
-            <div class="library-head"><h2 id="libraryTitle">The collection</h2><span class="library-count">04 PLAYABLE / 05 PLANNED</span></div>
+            <div class="library-head"><h2 id="libraryTitle">The collection</h2><span class="library-count">05 PLAYABLE / 05 COMPLETE</span></div>
             <article class="feature">
                 <div class="feature-art" aria-label="Chamber Maze arena illustration">
                     <svg viewBox="0 0 720 430" role="img" aria-labelledby="mazeTitle">
@@ -299,9 +299,71 @@
                     </div>
                 </div>
             </article>
-            <div class="upcoming" aria-label="One more game is planned" style="grid-template-columns: 1fr;">
-                <div class="slot"><span class="slot-number">05</span><span class="slot-label">Final game<br>in development</span></div>
-            </div>
+            <article class="feature drift-feature">
+                <div class="feature-art" aria-label="Hyper Drift Neon Circuit illustration">
+                    <svg viewBox="0 0 720 430" role="img" aria-labelledby="driftSvgTitle">
+                        <title id="driftSvgTitle">Top-down neon racetrack with drifting cars, skid marks, and oil slicks</title>
+                        <defs>
+                            <filter id="driftGlow">
+                                <feGaussianBlur stdDeviation="6" result="blur"/>
+                                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                            </filter>
+                            <linearGradient id="driftAsphalt" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stop-color="#0f1624"/>
+                                <stop offset="100%" stop-color="#080c14"/>
+                            </linearGradient>
+                        </defs>
+                        <!-- Infield grid background -->
+                        <rect x="0" y="0" width="720" height="430" fill="url(#driftAsphalt)"/>
+
+                        <!-- Racetrack Ribbon Curve -->
+                        <path d="M 60 340 C 60 120 280 80 480 90 C 660 100 680 260 560 350 C 440 420 220 380 60 340" fill="none" stroke="#182236" stroke-width="110" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M 60 340 C 60 120 280 80 480 90 C 660 100 680 260 560 350 C 440 420 220 380 60 340" fill="none" stroke="#ffe600" stroke-width="3" stroke-dasharray="20 20" stroke-linecap="round"/>
+
+                        <!-- Persistent Skid Marks -->
+                        <path d="M 460 75 Q 560 110 590 190" fill="none" stroke="rgba(0,0,0,0.6)" stroke-width="12" stroke-linecap="round"/>
+                        <path d="M 475 90 Q 575 125 605 205" fill="none" stroke="rgba(0,0,0,0.6)" stroke-width="12" stroke-linecap="round"/>
+
+                        <!-- Oil Slick Hazard -->
+                        <ellipse cx="360" cy="85" rx="36" ry="18" fill="#7a1fa2" opacity="0.8" filter="url(#driftGlow)"/>
+                        <ellipse cx="360" cy="85" rx="22" ry="10" fill="#00f0ff" opacity="0.6"/>
+
+                        <!-- Lead Cyan Drift Car -->
+                        <g transform="translate(560, 160) rotate(58)">
+                            <!-- Exhaust flames -->
+                            <path d="M -22 -6 L -44 0 L -22 6 Z" fill="#00ff88" filter="url(#driftGlow)"/>
+                            <!-- Drift sparks -->
+                            <circle cx="-16" cy="-12" r="4" fill="#00f0ff" filter="url(#driftGlow)"/>
+                            <circle cx="-16" cy="12" r="4" fill="#00f0ff" filter="url(#driftGlow)"/>
+                            <!-- Car Body -->
+                            <rect x="-20" y="-12" width="40" height="24" rx="6" fill="#0b1726" stroke="#00f0ff" stroke-width="3" filter="url(#driftGlow)"/>
+                            <rect x="-6" y="-8" width="15" height="16" rx="2" fill="#1e293b"/>
+                        </g>
+
+                        <!-- Chasing Magenta Rival Car -->
+                        <g transform="translate(430, 95) rotate(12)">
+                            <rect x="-20" y="-12" width="40" height="24" rx="6" fill="#2b0d1e" stroke="#ff0055" stroke-width="3" filter="url(#driftGlow)"/>
+                            <rect x="-6" y="-8" width="15" height="16" rx="2" fill="#1e293b"/>
+                        </g>
+
+                        <!-- Floating Power-Up Capsule -->
+                        <g transform="translate(260, 85)">
+                            <circle cx="0" cy="0" r="18" fill="rgba(255, 230, 0, 0.2)" stroke="#ffe600" stroke-width="2.5" filter="url(#driftGlow)"/>
+                            <text x="0" y="5" font-size="14" text-anchor="middle" fill="#ffe600" font-weight="bold">⚡</text>
+                        </g>
+                    </svg>
+                </div>
+                <div class="feature-copy">
+                    <span class="feature-index">GAME 05 / NEON MOTORSPORT</span>
+                    <h3>Hyper Drift:<br>Neon Circuit</h3>
+                    <p>High-octane top-down drift racing with true tire slip physics! Pitch your chassis sideways into hairpin bends, charge multi-stage mini-turbo sparks, and deploy slippery oil slicks and shock missiles in 3-lap championship duels.</p>
+                    <div class="feature-meta"><span>TWO PLAYER (SPLIT SCREEN)</span><span>VS AI (3 TIERS)</span><span>MOBILE &amp; DESKTOP</span></div>
+                    <div class="feature-actions">
+                        <a class="play-link" href="drift.html"><span>Hit the Gas</span><span aria-hidden="true">&#8594;</span></a>
+                        <button class="guide-btn" type="button" data-game="drift">📖 Guide</button>
+                    </div>
+                </div>
+            </article>
         </section>
 
         <!-- Arcade Game Guides Modal -->
@@ -313,6 +375,7 @@
                         <button class="guide-tab-btn" type="button" role="tab" data-tab="duel" id="tabDuel" aria-controls="panelDuel" aria-selected="false">02 Five Arrows</button>
                         <button class="guide-tab-btn" type="button" role="tab" data-tab="chess" id="tabChess" aria-controls="panelChess" aria-selected="false">03 Chess</button>
                         <button class="guide-tab-btn" type="button" role="tab" data-tab="battleline" id="tabBattleline" aria-controls="panelBattleline" aria-selected="false">04 Cyber Puck</button>
+                        <button class="guide-tab-btn" type="button" role="tab" data-tab="drift" id="tabDrift" aria-controls="panelDrift" aria-selected="false">05 Hyper Drift</button>
                     </div>
                     <button class="guide-close-btn" id="guideCloseBtn" type="button" title="Close guide" aria-label="Close guide modal">✕</button>
                 </div>
@@ -509,6 +572,47 @@
                         <div class="guide-footer-actions">
                             <span style="font-size:0.72rem; color:var(--muted); font-family:ui-monospace,monospace;">Modes: 2-Player Local · Vs AI (Casual / Pro / Cyber-God) · Online Rooms</span>
                             <a class="guide-play-cta" href="battleline.html"><span>Enter the Rink</span><span aria-hidden="true">&#8594;</span></a>
+                        </div>
+                    </div>
+
+                    <!-- Panel 5: Hyper Drift -->
+                    <div class="guide-panel" id="panelDrift" role="tabpanel" aria-labelledby="tabDrift">
+                        <div class="guide-panel-tag">GAME 05 · NEON MOTORSPORT</div>
+                        <h3>Hyper Drift: Neon Circuit</h3>
+                        <p class="lead">A high-velocity arcade drift racer powered by momentum physics, persistent tire skid marks, and combat power-ups on an expansive 2600px neon championship circuit.</p>
+
+                        <div class="guide-section">
+                            <h4>The Race Objective</h4>
+                            <ul>
+                                <li>🏁 <strong>3 Laps to Glory:</strong> Complete 3 laps on the neon circuit. Read your lines, clip the inside apexes, and cross the checkered finish line first!</li>
+                                <li>🌀 <strong>Power Drift &amp; Mini-Turbo:</strong> Steer hard into a corner and hold Drift to swing the rear out. As you drift, your tires charge sparks: <em>Blue (Stage 1)</em> → <em>Orange (Stage 2)</em> → <em>Purple (Ultra)</em>. Release to unleash a massive mini-turbo boost!</li>
+                                <li>🛣️ <strong>Big Track &amp; Dynamic Camera:</strong> Smooth follow-camera with velocity lookahead keeps the road ahead in full view. In 2P Mode, race side-by-side in split-screen!</li>
+                            </ul>
+                        </div>
+
+                        <div class="guide-section">
+                            <h4>The Power-Up Arsenal</h4>
+                            <ul>
+                                <li>🛢️ <strong>Oil Slick Trap:</strong> Drop a slippery rainbow oil trap directly behind you. Any car hitting it loses 100% tire traction and spins out 360°!</li>
+                                <li>⚡ <strong>Nitro Overdrive:</strong> Twin plasma thruster ignition for an instant +75% top speed surge down long straights.</li>
+                                <li>💥 <strong>Homing Shock Missile:</strong> Locks onto the leading rival ahead and detonates on impact, throwing them into the wall.</li>
+                                <li>🛡️ <strong>Kinetic Shield:</strong> Grants 6 seconds of invulnerability from missiles, ramming, and oil slicks.</li>
+                                <li>❄️ <strong>EMP Shockwave:</strong> 360° radial pulse that temporarily stalls the opponent's engine and steering.</li>
+                            </ul>
+                        </div>
+
+                        <div class="guide-section">
+                            <h4>Controls &amp; Input Methods</h4>
+                            <ul>
+                                <li>🎮 <strong>Player 1 (Cyan / Desktop):</strong> Drive with <strong>W, A, S, D</strong> · Drift with <strong>Shift / Space</strong> · Fire Ability with <strong>E / F</strong>.</li>
+                                <li>🕹️ <strong>Player 2 (Magenta / 2P Split):</strong> Drive with <strong>Arrow Keys (↑, ↓, ←, →)</strong> · Drift with <strong>Numpad 0 / Enter</strong> · Fire Ability with <strong>Numpad . / R-Ctrl</strong>.</li>
+                                <li>📱 <strong>Mobile &amp; Tablet:</strong> Responsive touch controls for Steer, Gas, Drift, and Ability triggers. Supports 2P split-screen multi-touch on tablets!</li>
+                            </ul>
+                        </div>
+
+                        <div class="guide-footer-actions">
+                            <span style="font-size:0.72rem; color:var(--muted); font-family:ui-monospace,monospace;">Modes: 1P vs AI (Casual / Pro / Cyber-God) · 2P Split-Screen · Time Trial</span>
+                            <a class="guide-play-cta" href="drift.html"><span>Hit the Gas</span><span aria-hidden="true">&#8594;</span></a>
                         </div>
                     </div>
                 </div>

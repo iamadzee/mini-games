@@ -40,6 +40,12 @@
       "short_name": "Battleline AI",
       "url": "./battleline.html?mode=ai",
       "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Play Hyper Drift against AI",
+      "short_name": "Hyper Drift AI",
+      "url": "./drift.html?mode=ai",
+      "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }]
     }
   ]
 }
