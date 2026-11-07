@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
     <meta name="theme-color" content="#060912">
     <meta name="description" content="Cyber Puck: Neon Air Hockey. A hyper-kinetic 2-player physics sports duel. Real kinetic collisions, power-up capsules, bank shots, and intelligent AI opponents.">
     <link rel="manifest" href="./manifest.json">
@@ -480,9 +480,131 @@
             transform: translateX(-50%) translateY(0);
         }
 
+        /* Mobile On-Screen Slap Action Bar */
+        .mobile-slap-bar {
+            width: 100%;
+            max-width: 860px;
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .mobile-slap-btn {
+            flex: 1;
+            min-height: 48px;
+            border-radius: 8px;
+            border: 1px solid var(--border-bright);
+            background: #0f1626;
+            color: #fff;
+            font-family: var(--font-mono);
+            font-weight: 850;
+            font-size: 0.82rem;
+            letter-spacing: 0.08em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: all 0.12s ease;
+        }
+
+        .mobile-slap-btn.slap-p1 {
+            border-color: var(--cyan);
+            color: var(--cyan);
+            box-shadow: 0 0 12px rgba(0, 240, 255, 0.2), inset 0 0 10px rgba(0, 240, 255, 0.05);
+        }
+
+        .mobile-slap-btn.slap-p1:active, .mobile-slap-btn.slap-p1.active {
+            background: rgba(0, 240, 255, 0.22);
+            box-shadow: 0 0 20px var(--cyan-glow);
+            transform: scale(0.97);
+        }
+
+        .mobile-slap-btn.slap-p2 {
+            border-color: var(--pink);
+            color: var(--pink);
+            box-shadow: 0 0 12px rgba(255, 0, 85, 0.2), inset 0 0 10px rgba(255, 0, 85, 0.05);
+        }
+
+        .mobile-slap-btn.slap-p2:active, .mobile-slap-btn.slap-p2.active {
+            background: rgba(255, 0, 85, 0.22);
+            box-shadow: 0 0 20px var(--pink-glow);
+            transform: scale(0.97);
+        }
+
+        /* Mobile Responsive Viewports */
         @media (max-width: 960px) {
-            main.arena-theater { grid-template-columns: 1fr; }
-            .rink-card { max-width: 100%; aspect-ratio: 16 / 10; }
+            main.arena-theater {
+                grid-template-columns: 1fr;
+                padding: 10px clamp(8px, 2vw, 16px) 20px;
+                gap: 14px;
+            }
+            .rink-card {
+                max-width: 100%;
+                aspect-ratio: 16 / 10;
+            }
+        }
+
+        @media (max-width: 680px) {
+            header.topbar {
+                padding: 0 10px;
+                min-height: 50px;
+            }
+            .brand-link span:not(.brand-mark) {
+                display: none;
+            }
+            .scoreboard-center {
+                padding: 3px 10px;
+                gap: 8px;
+            }
+            .score-side span:first-child {
+                font-size: 0.65rem;
+            }
+            .score-num {
+                font-size: 1.25rem;
+                min-width: 16px;
+            }
+            .score-center-col {
+                min-width: 65px;
+            }
+            .score-divider {
+                font-size: 0.62rem;
+            }
+            .game-point-pill {
+                font-size: 0.55rem;
+                padding: 1px 6px;
+            }
+            .games-badge {
+                display: none;
+            }
+            .action-btn span:last-child {
+                display: none;
+            }
+            .action-btn {
+                padding: 6px 9px;
+                font-size: 0.85rem;
+            }
+            .controls-hint-bar {
+                font-size: 0.66rem;
+                padding: 6px 10px;
+            }
+            .mobile-slap-btn {
+                min-height: 44px;
+                font-size: 0.76rem;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .score-side span:first-child {
+                display: none;
+            }
+            .scoreboard-center {
+                gap: 6px;
+                padding: 2px 8px;
+            }
         }
     </style>
 </head>
@@ -529,6 +651,18 @@
         <section style="display:flex; flex-direction:column; align-items:center;" aria-label="Cyber Puck Arena">
             <div class="rink-card">
                 <canvas id="rinkCanvas" width="900" height="560"></canvas>
+            </div>
+
+            <!-- On-Screen Mobile Slap Action Bar -->
+            <div class="mobile-slap-bar" id="mobileSlapBar">
+                <button class="mobile-slap-btn slap-p1" id="mobileSlapP1Btn" type="button" aria-label="Player 1 Power Slap">
+                    <span class="slap-icon">⚡</span>
+                    <span class="slap-label" id="mobileSlapP1Label">POWER SLAP SHOT</span>
+                </button>
+                <button class="mobile-slap-btn slap-p2" id="mobileSlapP2Btn" type="button" aria-label="Player 2 Power Slap" style="display:none;">
+                    <span class="slap-icon">⚡</span>
+                    <span class="slap-label" id="mobileSlapP2Label">P2 SLAP (MAGENTA)</span>
+                </button>
             </div>
 
             <div class="controls-hint-bar">
@@ -635,9 +769,9 @@
             <p><strong>The Objective:</strong> Out-maneuver your rival on the zero-friction air hockey table. Smash the puck into the opponent's goal pocket. The first player to score <strong>10 Goals</strong> wins the game! Each goal awards <strong>1 point</strong>. When a player reaches 9 points, high-tension <strong>Game Point</strong> pressure activates!</p>
 
             <p><strong>🕹️ Paddle Controls:</strong><br>
+            • <strong>Mobile &amp; Tablet:</strong> Touch &amp; drag anywhere on screen to steer your mallet with real kinetic momentum! Tap the rink or use the on-screen <strong>[⚡ SLAP]</strong> button to unleash supersonic power strikes. In 2P Local mode, two players play simultaneously on one screen (left half vs right half multi-touch)!<br>
             • <strong>Player 1 (Cyan / Left):</strong> Move with <strong>W, A, S, D</strong> or <strong>Mouse</strong>. Power-Slap with <strong>Space / F</strong> or <strong>Left-Click</strong>.<br>
             • <strong>Player 2 (Magenta / Right in 2P):</strong> Move with <strong>Arrow Keys (↑, ↓, ←, →)</strong>. Power-Slap with <strong>Enter / Numpad 0</strong>.<br>
-            • <strong>Mobile / Tablet 2-Player:</strong> Independent multi-touch — Player 1 touches the left half, Player 2 touches the right half.<br>
             • <strong>Center Line Boundary:</strong> You cannot cross into the opponent's half of the table.
             </p>
 
@@ -761,6 +895,7 @@
             let scoreP2 = 0;
             let gamesWonP1 = 0;
             let gamesWonP2 = 0;
+            let isGoalTransition = false;
             let isGamePoint = false;
             let gamePointAnnounced = false;
             let matchTimeSeconds = 0;
@@ -901,6 +1036,7 @@
                     gamesWonP1 = 0;
                     gamesWonP2 = 0;
                 }
+                isGoalTransition = false;
                 isGamePoint = false;
                 gamePointAnnounced = false;
                 matchTimeSeconds = 0;
@@ -919,6 +1055,7 @@
 
                 document.getElementById('gameOverModal').classList.remove('open');
                 updateUI();
+                updateControlsHint();
                 showToast('NEON ARENA LIVE · FIRST TO 10 WINS');
             }
 
@@ -997,6 +1134,9 @@
                 if (gameMode === 'ai') {
                     updateAiTactics(dt);
                 }
+
+                // If in goal celebration / transition, pause puck physics so goal can only trigger once
+                if (isGoalTransition) return;
 
                 // 3. Move Pucks & Collision Handling (with 4x Sub-stepping for Continuous Collision Detection)
                 const SUB_STEPS = 4;
@@ -1313,9 +1453,14 @@
                6. GOAL & POWERUP HANDLERS
                ======================================================== */
             function handleGoalScored(scorer) {
-                sfxGoal();
-                goalShakeTimer = 20;
+                // Prevent duplicate goal triggers on consecutive frames or sub-steps
+                if (isGoalTransition || gameOver) return;
+                isGoalTransition = true;
 
+                sfxGoal();
+                goalShakeTimer = 22;
+
+                // Award strictly 1 point for the goal
                 if (scorer === 1) {
                     scoreP1++;
                     spawnShockwave(20, RINK_HEIGHT / 2, '#00f0ff');
@@ -1327,6 +1472,15 @@
                     spawnSparks(RINK_WIDTH - 20, RINK_HEIGHT / 2, '#ff0055', 40);
                     showToast('MAGENTA SCORES! GOAL! (+1 POINT)');
                 }
+
+                // Immediately neutralize puck velocities and park in goal net
+                pucks.forEach(p => {
+                    p.vx = 0;
+                    p.vy = 0;
+                    p.isOverdrive = false;
+                    p.x = scorer === 1 ? RINK_WIDTH - 8 : 8;
+                    p.y = RINK_HEIGHT / 2;
+                });
 
                 updateUI();
 
@@ -1341,9 +1495,14 @@
                 // Check Game Point Tension Announcement
                 checkGamePointNotification();
 
-                // Reset for next puck face-off
+                // Reset for next puck face-off after celebration delay
                 resetPaddles();
-                setTimeout(() => resetPuck(scorer === 1 ? 2 : 1), 600);
+                setTimeout(() => {
+                    if (!gameOver) {
+                        resetPuck(scorer === 1 ? 2 : 1);
+                        isGoalTransition = false;
+                    }
+                }, 750);
             }
 
             function triggerGameOver(winner) {
@@ -1901,8 +2060,9 @@
                 }
             }
 
-            // Pointer Events: Pointerdown (Instant click response & pointer capture)
+            // Pointer Events: Desktop Mouse Tracking (ignoring touch to avoid double triggers)
             canvas.addEventListener('pointerdown', e => {
+                if (e.pointerType === 'touch') return;
                 updateCanvasRect();
                 try { canvas.setPointerCapture(e.pointerId); } catch(_) {}
                 const pos = getCanvasPos(e.clientX, e.clientY);
@@ -1910,9 +2070,8 @@
                 mouseCursor.y = pos.y;
                 mouseCursor.visible = true;
 
-                // In 2P Local mode, mouse click belongs to Player 1 unless it is a touch on the right half
                 let controlledMallet = p1;
-                if (gameMode === 'local' && e.pointerType === 'touch' && pos.x > RINK_WIDTH / 2) {
+                if (gameMode === 'local' && pos.x > RINK_WIDTH / 2) {
                     controlledMallet = p2;
                 }
 
@@ -1920,8 +2079,8 @@
                 triggerPowerStrike(pos.x, pos.y, controlledMallet);
             });
 
-            // Pointermove: Window-wide so fast mouse swipes never drop
             window.addEventListener('pointermove', e => {
+                if (e.pointerType === 'touch') return;
                 const pos = getCanvasPos(e.clientX, e.clientY);
                 mouseCursor.x = pos.x;
                 mouseCursor.y = pos.y;
@@ -1945,7 +2104,8 @@
                 }
             });
 
-            canvas.addEventListener('pointerenter', () => {
+            canvas.addEventListener('pointerenter', e => {
+                if (e.pointerType === 'touch') return;
                 updateCanvasRect();
                 mouseCursor.visible = true;
             });
@@ -1964,53 +2124,148 @@
                 try { canvas.releasePointerCapture(e.pointerId); } catch(_) {}
             });
 
-            // Multi-touch tracking for 2-Player tablet / mobile play
-            let p1TouchId = null;
-            let p2TouchId = null;
+            // High-Performance Multi-Touch Engine for Mobile & Tablet
+            const activeTouches = {};
 
-            canvas.addEventListener('touchstart', e => {
+            function handleTouchStart(e) {
                 e.preventDefault();
                 updateCanvasRect();
                 initAudio();
+
                 for (let i = 0; i < e.changedTouches.length; i++) {
                     const t = e.changedTouches[i];
                     const pos = getCanvasPos(t.clientX, t.clientY);
-                    if (pos.x <= RINK_WIDTH / 2) {
-                        p1TouchId = t.identifier;
+
+                    let targetMallet = p1;
+                    if (gameMode === 'local') {
+                        targetMallet = pos.x <= RINK_WIDTH / 2 ? p1 : p2;
+                    }
+
+                    activeTouches[t.identifier] = {
+                        mallet: targetMallet,
+                        lastX: pos.x,
+                        lastY: pos.y,
+                        lastTime: performance.now()
+                    };
+
+                    if (targetMallet === p1) {
                         p1.targetX = Math.min(RINK_WIDTH / 2 - 12 - p1.radius, pos.x);
                         p1.targetY = pos.y;
-                        triggerPowerStrike(pos.x, pos.y, p1);
-                    } else if (gameMode === 'local') {
-                        p2TouchId = t.identifier;
+                    } else {
                         p2.targetX = Math.max(RINK_WIDTH / 2 + 12 + p2.radius, pos.x);
                         p2.targetY = pos.y;
-                        triggerPowerStrike(pos.x, pos.y, p2);
                     }
-                }
-            }, { passive: false });
 
-            canvas.addEventListener('touchmove', e => {
+                    triggerPowerStrike(pos.x, pos.y, targetMallet);
+                    if (navigator.vibrate) try { navigator.vibrate(15); } catch(_) {}
+                }
+            }
+
+            function handleTouchMove(e) {
                 e.preventDefault();
+                const now = performance.now();
+
                 for (let i = 0; i < e.touches.length; i++) {
                     const t = e.touches[i];
                     const pos = getCanvasPos(t.clientX, t.clientY);
-                    if (t.identifier === p1TouchId || (p1TouchId === null && pos.x <= RINK_WIDTH / 2)) {
+                    let record = activeTouches[t.identifier];
+
+                    if (!record) {
+                        let targetMallet = p1;
+                        if (gameMode === 'local') {
+                            targetMallet = pos.x <= RINK_WIDTH / 2 ? p1 : p2;
+                        }
+                        record = {
+                            mallet: targetMallet,
+                            lastX: pos.x,
+                            lastY: pos.y,
+                            lastTime: now
+                        };
+                        activeTouches[t.identifier] = record;
+                    }
+
+                    // Calculate touch delta velocity for kinetic momentum strikes
+                    const dt = (now - record.lastTime) / 1000;
+                    if (dt > 0.001 && dt < 0.15) {
+                        const instVx = (pos.x - record.lastX) / dt;
+                        const instVy = (pos.y - record.lastY) / dt;
+                        record.mallet.swingVx = record.mallet.swingVx * 0.35 + instVx * 0.65;
+                        record.mallet.swingVy = record.mallet.swingVy * 0.35 + instVy * 0.65;
+                    }
+                    record.lastX = pos.x;
+                    record.lastY = pos.y;
+                    record.lastTime = now;
+
+                    if (record.mallet === p1) {
                         p1.targetX = Math.min(RINK_WIDTH / 2 - 12 - p1.radius, pos.x);
                         p1.targetY = pos.y;
-                    } else if (gameMode === 'local' && (t.identifier === p2TouchId || (p2TouchId === null && pos.x > RINK_WIDTH / 2))) {
+                    } else {
                         p2.targetX = Math.max(RINK_WIDTH / 2 + 12 + p2.radius, pos.x);
                         p2.targetY = pos.y;
                     }
                 }
-            }, { passive: false });
+            }
 
-            canvas.addEventListener('touchend', e => {
+            function handleTouchEnd(e) {
                 for (let i = 0; i < e.changedTouches.length; i++) {
-                    const t = e.changedTouches[i];
-                    if (t.identifier === p1TouchId) p1TouchId = null;
-                    if (t.identifier === p2TouchId) p2TouchId = null;
+                    delete activeTouches[e.changedTouches[i].identifier];
                 }
-            });
+            }
+
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+            canvas.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+            window.addEventListener('orientationchange', () => setTimeout(updateCanvasRect, 200));
+
+            // On-Screen Mobile Slap Shot Buttons
+            const slapP1Btn = document.getElementById('mobileSlapP1Btn');
+            const slapP2Btn = document.getElementById('mobileSlapP2Btn');
+
+            function triggerSlapP1(e) {
+                if (e) e.preventDefault();
+                initAudio();
+                slapP1Btn.classList.add('active');
+                setTimeout(() => slapP1Btn.classList.remove('active'), 140);
+                triggerPowerStrike(p1.x + 35, p1.y, p1);
+                if (navigator.vibrate) try { navigator.vibrate(25); } catch(_) {}
+            }
+
+            function triggerSlapP2(e) {
+                if (e) e.preventDefault();
+                initAudio();
+                slapP2Btn.classList.add('active');
+                setTimeout(() => slapP2Btn.classList.remove('active'), 140);
+                triggerPowerStrike(p2.x - 35, p2.y, p2);
+                if (navigator.vibrate) try { navigator.vibrate(25); } catch(_) {}
+            }
+
+            slapP1Btn.addEventListener('pointerdown', triggerSlapP1);
+            slapP2Btn.addEventListener('pointerdown', triggerSlapP2);
+
+            function updateControlsHint() {
+                const hintEl = document.getElementById('controlsHintText');
+                const slapP1Label = document.getElementById('mobileSlapP1Label');
+                const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+                if (gameMode === 'local') {
+                    if (hintEl) {
+                        hintEl.innerHTML = isTouch
+                            ? '<span>📱 <strong>2P Local Mobile:</strong> P1 (Cyan) drags left · P2 (Magenta) drags right · Tap [SLAP] to strike!</span>'
+                            : '<span>🕹️ <strong>P1 (Cyan):</strong> WASD / Mouse (Space = Slap) · <strong>P2 (Magenta):</strong> Arrows (Enter = Slap)</span>';
+                    }
+                    if (slapP1Label) slapP1Label.textContent = 'P1 SLAP (CYAN)';
+                    if (slapP2Btn) slapP2Btn.style.display = 'flex';
+                } else {
+                    if (hintEl) {
+                        hintEl.innerHTML = isTouch
+                            ? '<span>📱 <strong>Touch Play:</strong> Drag finger to steer mallet · Tap screen or [⚡ POWER SLAP] to strike</span>'
+                            : '<span>🕹️ <strong>Controls:</strong> Move Mouse to steer · <strong>CLICK / SPACE</strong> to Power-Slap · <strong>P1: WASD</strong></span>';
+                    }
+                    if (slapP1Label) slapP1Label.textContent = '⚡ POWER SLAP SHOT';
+                    if (slapP2Btn) slapP2Btn.style.display = 'none';
+                }
+            }
 
             // Keyboard event listeners for WASD, Arrow Keys, and Power-Slap
             window.addEventListener('keydown', e => {
@@ -2070,12 +2325,9 @@
                 aiTierRow.style.display = 'none';
                 onlineRow.style.display = 'none';
                 document.getElementById('modeStatusLabel').textContent = '2P LOCAL · P1 vs P2';
-                const hintEl = document.getElementById('controlsHintText');
-                if (hintEl) {
-                    hintEl.innerHTML = '<span>🕹️ <strong>P1 (Cyan):</strong> WASD / Mouse (Space = Slap) · <strong>P2 (Magenta):</strong> Arrows (Enter = Slap)</span>';
-                }
+                updateControlsHint();
                 resetMatch();
-                showToast('2-PLAYER LOCAL READY: P1 [WASD] vs P2 [ARROWS]');
+                showToast('2-PLAYER LOCAL READY: P1 [WASD/LEFT] vs P2 [ARROWS/RIGHT]');
             });
 
             modeAiBtn.addEventListener('click', () => {
@@ -2086,10 +2338,7 @@
                 aiTierRow.style.display = 'block';
                 onlineRow.style.display = 'none';
                 document.getElementById('modeStatusLabel').textContent = `VS AI (${aiTier.toUpperCase()})`;
-                const hintEl = document.getElementById('controlsHintText');
-                if (hintEl) {
-                    hintEl.innerHTML = '<span>🕹️ CONTROLS: <strong>Move Mouse</strong> to steer · <strong>CLICK / SPACE</strong> to Power-Slap · <strong>P1: WASD</strong> · <strong>P2: Arrows</strong></span>';
-                }
+                updateControlsHint();
                 resetMatch();
             });
 
@@ -2101,6 +2350,7 @@
                 aiTierRow.style.display = 'none';
                 onlineRow.style.display = 'block';
                 document.getElementById('modeStatusLabel').textContent = 'ONLINE ROOM';
+                updateControlsHint();
                 resetMatch();
             });
 
