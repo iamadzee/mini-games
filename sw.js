@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mini-games-arcade-v28';
+const CACHE_NAME = 'mini-games-arcade-v29';
 const APP_FILES = ['.', 'index.html', 'ricochet.html', 'duel.html', 'chess.html', 'battleline.html', 'manifest.json', 'icon.svg', 'sw.js'];
 
 self.addEventListener('install', (event) => {

@@ -738,7 +738,7 @@
                 <div class="powerup-preview-list">
                     <div class="powerup-row">
                         <span class="powerup-icon">💥</span>
-                        <div class="powerup-desc"><strong>Overdrive Puck:</strong> Supercharges velocity with a blazing plasma comet trail!</div>
+                        <div class="powerup-desc"><strong>Supernova Warp:</strong> Triggers an explosive warp speed burst (30+ MPH) and shockwave!</div>
                     </div>
                     <div class="powerup-row">
                         <span class="powerup-icon">🛡️</span>
@@ -776,9 +776,11 @@
             </p>
 
             <p><strong>⚡ Kinetic Bank Shots &amp; Arena Physics:</strong><br>
+            • <strong>Infinite Flame Comet Puck:</strong> The puck blazes with permanent fiery plasma momentum, maintaining extreme speeds throughout the entire match without slowing down!<br>
+            • <strong>Agile AI Opponents:</strong> The Medium (Pro) AI aggressively maneuvers horizontally and vertically across its zone, challenging passing lanes, stepping forward into slaps, and setting up tactical rebounds!<br>
             • <strong>45° Corner Bevels:</strong> Angled tournament corner cushions smoothly deflect corner pucks outward into open ice, preventing traps.<br>
             • <strong>Game Point System:</strong> Reaching 9 points initiates Game Point tension. At 9-9 Deuce, sudden-death rules trigger — next goal wins!<br>
-            • <strong>Power-Up Capsules:</strong> Hit the floating central orb with the puck to unleash Overdrive speed, Goal Shields, Tri-Puck splits, or Titan Paddles!
+            • <strong>Power-Up Capsules:</strong> Hit the floating central orb with the puck to unleash Supernova Warp bursts, Goal Shields, Tri-Flame splits, Titan Mallets, or EMP Freezes!
             </p>
 
             <div class="modal-actions">
@@ -1089,11 +1091,11 @@
                 pucks = [{
                     x: RINK_WIDTH / 2,
                     y: RINK_HEIGHT / 2,
-                    vx: towardsPlayer === 1 ? -4 : 4,
-                    vy: (Math.random() - 0.5) * 3,
+                    vx: towardsPlayer === 1 ? -9 : 9,
+                    vy: (Math.random() - 0.5) * 4.5,
                     r: PUCK_RADIUS,
-                    isOverdrive: false,
-                    overdriveTimer: 0,
+                    isOverdrive: true,
+                    overdriveTimer: Infinity,
                     trail: []
                 }];
             }
@@ -1143,27 +1145,41 @@
                 for (let i = pucks.length - 1; i >= 0; i--) {
                     const puck = pucks[i];
 
-                    // Trail record
+                    // Trail record (extended length 16 for blazing comet flame tail)
                     puck.trail.push({ x: puck.x, y: puck.y });
-                    if (puck.trail.length > 10) puck.trail.shift();
+                    if (puck.trail.length > 16) puck.trail.shift();
 
-                    // Overdrive decay
-                    if (puck.isOverdrive) {
-                        puck.overdriveTimer -= dt;
-                        if (puck.overdriveTimer <= 0) puck.isOverdrive = false;
+                    // Permanent Infinite Flame Mode: Overdrive never decays!
+                    puck.isOverdrive = true;
+                    puck.overdriveTimer = Infinity;
+
+                    // Trailing fire ember sparks
+                    if (Math.random() < 0.35) {
+                        spawnSparks(puck.x - puck.vx * 0.4, puck.y - puck.vy * 0.4, Math.random() < 0.5 ? '#ff4d00' : '#ffe600', 1);
                     }
 
-                    // Apply friction / drag
-                    const friction = 0.996;
+                    // Low friction drag so the puck maintains blazing momentum
+                    const friction = 0.9985;
                     puck.vx *= friction;
                     puck.vy *= friction;
 
-                    // Speed clamping
-                    const maxSpeed = puck.isOverdrive ? 26 : 19;
-                    const speed = Math.hypot(puck.vx, puck.vy);
-                    if (speed > maxSpeed) {
+                    // Permanent High Speed Keeper: minSpeed = 8.5 keeps ball ALWAYS blazing fast!
+                    const minSpeed = 8.5;
+                    const maxSpeed = 26;
+                    let speed = Math.hypot(puck.vx, puck.vy);
+                    if (speed < minSpeed) {
+                        if (speed > 0.05) {
+                            puck.vx = (puck.vx / speed) * minSpeed;
+                            puck.vy = (puck.vy / speed) * minSpeed;
+                        } else {
+                            puck.vx = (Math.random() < 0.5 ? -1 : 1) * minSpeed;
+                            puck.vy = (Math.random() - 0.5) * 3;
+                        }
+                        speed = minSpeed;
+                    } else if (speed > maxSpeed) {
                         puck.vx = (puck.vx / speed) * maxSpeed;
                         puck.vy = (puck.vy / speed) * maxSpeed;
+                        speed = maxSpeed;
                     }
 
                     // Telemetry mph
@@ -1393,42 +1409,62 @@
                             p2.swingVx = -650;
                         }
                     } else if (aiTier === 'casual') {
-                        // Slowly moves toward puck
-                        targetX = Math.min(RINK_WIDTH - 65, Math.max(RINK_WIDTH / 2 + 60, primaryPuck.x + 15));
+                        // Slowly moves toward puck with mild horizontal advance
+                        targetX = Math.min(RINK_WIDTH - 70, Math.max(RINK_WIDTH / 2 + 70, primaryPuck.x + 30));
                         targetY = primaryPuck.y;
                     } else if (aiTier === 'pro') {
-                        // Anticipates trajectory and charges forward to smash
+                        // Medium (Pro) AI: Agile horizontal maneuvers, forward challenges, and attack drives!
                         const distToPuck = Math.hypot(primaryPuck.x - p2.x, primaryPuck.y - p2.y);
-                        if (distToPuck < 140 && primaryPuck.x > p2.x - 35) {
-                            targetX = primaryPuck.x + 10;
+
+                        if (distToPuck < 150 && primaryPuck.x <= p2.x + 15) {
+                            // Strike zone: Step into the puck with horizontal forward drive toward center rink
+                            targetX = Math.max(RINK_WIDTH / 2 + 50, primaryPuck.x - 30);
                             targetY = primaryPuck.y;
-                            p2.swingVx = -700;
+                            p2.swingVx = -680;
+                        } else if (primaryPuck.vx > 0) {
+                            // Puck incoming toward AI: Intercept forward at an aggressive angle
+                            const interceptX = Math.max(520, Math.min(780, primaryPuck.x + 55));
+                            const predY = primaryPuck.y + primaryPuck.vy * 3.2;
+                            targetX = interceptX;
+                            targetY = Math.max(65, Math.min(RINK_HEIGHT - 65, predY));
                         } else {
-                            targetX = RINK_WIDTH - 130;
-                            targetY = primaryPuck.y + primaryPuck.vy * 4;
+                            // Puck drifting or heading away: Advance horizontally up to midline zone to contest
+                            targetX = Math.max(505, Math.min(730, primaryPuck.x + 40));
+                            targetY = primaryPuck.y;
                         }
                     } else {
                         // Cyber-God AI: Predictive angle interception & aggressive smash
-                        const leadTime = (p2.x - primaryPuck.x) / Math.max(1, primaryPuck.vx);
-                        const predY = primaryPuck.y + primaryPuck.vy * Math.min(15, Math.max(0, leadTime));
-
-                        if (primaryPuck.x > p2.x - 80) {
-                            targetX = primaryPuck.x + 15;
+                        const distToPuck = Math.hypot(primaryPuck.x - p2.x, primaryPuck.y - p2.y);
+                        if (distToPuck < 155 && primaryPuck.x <= p2.x + 20) {
+                            targetX = primaryPuck.x - 35;
                             targetY = primaryPuck.y;
-                            p2.swingVx = -900;
+                            p2.swingVx = -880;
                         } else {
-                            targetX = RINK_WIDTH - 110;
-                            targetY = Math.max(90, Math.min(RINK_HEIGHT - 90, predY));
+                            const leadTime = Math.max(0.1, (p2.x - primaryPuck.x) / Math.max(2, Math.abs(primaryPuck.vx)));
+                            const predY = primaryPuck.y + primaryPuck.vy * Math.min(12, leadTime);
+                            targetX = Math.max(510, Math.min(790, primaryPuck.x + 65));
+                            targetY = Math.max(70, Math.min(RINK_HEIGHT - 70, predY));
                         }
                     }
                 } else {
-                    // Puck in player's half: AI returns to guarded home position
-                    targetX = homeX;
-                    targetY = homeY + (primaryPuck.y - homeY) * 0.35;
+                    // Puck in player's half:
+                    if (aiTier === 'pro') {
+                        // Medium AI dynamic horizontal pacing & tactical mid-court positioning
+                        const lateralPacing = Math.sin(matchTimeSeconds * 2.6) * 55;
+                        const depthBias = (1 - (primaryPuck.x / (RINK_WIDTH / 2))) * 65;
+                        targetX = 645 + depthBias + lateralPacing;
+                        targetY = homeY + (primaryPuck.y - homeY) * 0.45;
+                    } else if (aiTier === 'god') {
+                        targetX = 680 + Math.sin(matchTimeSeconds * 3) * 35;
+                        targetY = homeY + (primaryPuck.y - homeY) * 0.4;
+                    } else {
+                        targetX = homeX;
+                        targetY = homeY + (primaryPuck.y - homeY) * 0.35;
+                    }
                 }
 
                 // Smooth acceleration toward target
-                const maxSpeed = aiTier === 'casual' ? 7 : aiTier === 'pro' ? 12 : 16;
+                const maxSpeed = aiTier === 'casual' ? 7 : aiTier === 'pro' ? 11 : 16;
                 const dx = targetX - p2.x;
                 const dy = targetY - p2.y;
                 const dist = Math.hypot(dx, dy);
@@ -1477,7 +1513,6 @@
                 pucks.forEach(p => {
                     p.vx = 0;
                     p.vy = 0;
-                    p.isOverdrive = false;
                     p.x = scorer === 1 ? RINK_WIDTH - 8 : 8;
                     p.y = RINK_HEIGHT / 2;
                 });
@@ -1559,29 +1594,36 @@
                 pill.style.display = 'inline-flex';
 
                 if (type === 'overdrive') {
+                    // Puck already has infinite flame, so Overdrive orb grants an explosive SUPERNOVA WARP BOOST!
+                    const curSpeed = Math.hypot(puck.vx, puck.vy) || 1;
+                    const boostSpeed = Math.min(28, curSpeed * 1.35);
+                    puck.vx = (puck.vx / curSpeed) * boostSpeed;
+                    puck.vy = (puck.vy / curSpeed) * boostSpeed;
                     puck.isOverdrive = true;
-                    puck.overdriveTimer = 8;
-                    pill.textContent = '💥 OVERDRIVE PUCK (2X SPEED)';
-                    showToast('💥 OVERDRIVE COMET PUCK!');
+                    puck.overdriveTimer = Infinity;
+                    spawnShockwave(puck.x, puck.y, '#ff4d00');
+                    spawnSparks(puck.x, puck.y, '#ffe600', 25);
+                    pill.textContent = '💥 SUPERNOVA WARP BOOST (30+ MPH BURST)';
+                    showToast('💥 SUPERNOVA WARP BOOST UNLEASHED!');
                 } else if (type === 'shield') {
                     player.shieldActive = true;
                     player.shieldTimer = 7;
                     pill.textContent = '🛡️ LASER GOAL BARRIER';
                     showToast('🛡️ DEFENSIVE LASER SHIELD ACTIVE!');
                 } else if (type === 'multipuck') {
-                    // Split into 3 pucks!
+                    // Split into 3 pucks, all inheriting permanent infinite flame!
                     pucks.push({
                         x: puck.x, y: puck.y - 20,
-                        vx: puck.vx * 0.9, vy: -6,
-                        r: PUCK_RADIUS, isOverdrive: false, overdriveTimer: 0, trail: []
+                        vx: puck.vx * 0.95, vy: -7,
+                        r: PUCK_RADIUS, isOverdrive: true, overdriveTimer: Infinity, trail: []
                     });
                     pucks.push({
                         x: puck.x, y: puck.y + 20,
-                        vx: puck.vx * 0.9, vy: 6,
-                        r: PUCK_RADIUS, isOverdrive: false, overdriveTimer: 0, trail: []
+                        vx: puck.vx * 0.95, vy: 7,
+                        r: PUCK_RADIUS, isOverdrive: true, overdriveTimer: Infinity, trail: []
                     });
-                    pill.textContent = '⚡ MULTI-PUCK CHAOS (3 PUCKS)';
-                    showToast('⚡ TRI-PUCK SPLIT!');
+                    pill.textContent = '⚡ TRI-FLAME COMET STORM (3 PUCKS)';
+                    showToast('⚡ TRI-FLAME COMET STORM!');
                 } else if (type === 'titan') {
                     player.titanTimer = 8;
                     pill.textContent = '🔨 TITAN MALLET (+50% SIZE)';
@@ -1841,32 +1883,54 @@
             }
 
             function drawPuck(puck) {
-                // Motion blur trail
                 ctx.save();
+
+                // 1. Double-Layer Blazing Comet Flame Trail
                 for (let i = 0; i < puck.trail.length; i++) {
                     const pos = puck.trail[i];
-                    const alpha = (i + 1) / puck.trail.length * 0.45;
-                    ctx.fillStyle = puck.isOverdrive ? `rgba(255, 100, 0, ${alpha})` : `rgba(0, 240, 255, ${alpha})`;
+                    const ratio = (i + 1) / puck.trail.length;
+
+                    // Outer expanding fiery plume
+                    ctx.fillStyle = `rgba(255, 65, 0, ${ratio * 0.45})`;
                     ctx.beginPath();
-                    ctx.arc(pos.x, pos.y, puck.r * (0.5 + 0.5 * (i / puck.trail.length)), 0, Math.PI * 2);
+                    ctx.arc(pos.x, pos.y, puck.r * (0.5 + 0.65 * ratio), 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Inner hot golden/plasma core
+                    ctx.fillStyle = `rgba(255, 230, 60, ${ratio * 0.75})`;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, puck.r * (0.25 + 0.35 * ratio), 0, Math.PI * 2);
                     ctx.fill();
                 }
 
-                // Puck Body
-                ctx.fillStyle = puck.isOverdrive ? '#ff3b00' : '#f0f4fc';
+                // 2. Fiery Heat Corona / Outer Aura
+                const coronaGrad = ctx.createRadialGradient(puck.x, puck.y, puck.r * 0.5, puck.x, puck.y, puck.r * 1.7);
+                coronaGrad.addColorStop(0, 'rgba(255, 120, 0, 0.45)');
+                coronaGrad.addColorStop(1, 'rgba(255, 60, 0, 0)');
+                ctx.fillStyle = coronaGrad;
+                ctx.beginPath();
+                ctx.arc(puck.x, puck.y, puck.r * 1.7, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 3. Puck Body (Fiery Incandescent Red-Orange Gradient)
+                const bodyGrad = ctx.createRadialGradient(puck.x - puck.r * 0.3, puck.y - puck.r * 0.3, puck.r * 0.1, puck.x, puck.y, puck.r);
+                bodyGrad.addColorStop(0, '#fff4a3');
+                bodyGrad.addColorStop(0.35, '#ff4d00');
+                bodyGrad.addColorStop(1, '#c01500');
+                ctx.fillStyle = bodyGrad;
                 ctx.beginPath();
                 ctx.arc(puck.x, puck.y, puck.r, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Glowing Neon Rim
-                ctx.strokeStyle = puck.isOverdrive ? '#ffe600' : '#00f0ff';
+                // 4. Glowing Neon Golden Rim
+                ctx.strokeStyle = '#ffe600';
                 ctx.lineWidth = 2.5;
                 ctx.stroke();
 
-                // Center Core
-                ctx.fillStyle = puck.isOverdrive ? '#ffe600' : '#080c16';
+                // 5. Blazing Plasma Center Core
+                ctx.fillStyle = '#ffffff';
                 ctx.beginPath();
-                ctx.arc(puck.x, puck.y, puck.r * 0.4, 0, Math.PI * 2);
+                ctx.arc(puck.x, puck.y, puck.r * 0.35, 0, Math.PI * 2);
                 ctx.fill();
 
                 ctx.restore();
